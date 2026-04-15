@@ -94,20 +94,20 @@ export function TransactionTable({ limit, showSearch = true }: { limit?: number;
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">Transaction</th>
-              <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4 hidden sm:table-cell">Category</th>
-              <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4 hidden md:table-cell">Method</th>
+              <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4">Transação</th>
+              <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4 hidden sm:table-cell">Categoria</th>
+              <th className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4 hidden md:table-cell">Método</th>
               <th
                 className="text-left text-xs font-medium text-muted-foreground pb-2 pr-4 cursor-pointer hover:text-foreground transition-default"
                 onClick={() => toggleSort("date")}
               >
-                <span className="inline-flex items-center gap-1">Date <ArrowUpDown className="h-3 w-3" /></span>
+                <span className="inline-flex items-center gap-1">Data <ArrowUpDown className="h-3 w-3" /></span>
               </th>
               <th
                 className="text-right text-xs font-medium text-muted-foreground pb-2 cursor-pointer hover:text-foreground transition-default"
                 onClick={() => toggleSort("amount")}
               >
-                <span className="inline-flex items-center gap-1 justify-end">Amount <ArrowUpDown className="h-3 w-3" /></span>
+                <span className="inline-flex items-center gap-1 justify-end">Valor <ArrowUpDown className="h-3 w-3" /></span>
               </th>
             </tr>
           </thead>
@@ -147,7 +147,7 @@ export function TransactionTable({ limit, showSearch = true }: { limit?: number;
         </table>
       </div>
       {filtered.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-8">No transactions found.</p>
+        <p className="text-sm text-muted-foreground text-center py-8">Nenhuma transação encontrada.</p>
       )}
     </div>
   );

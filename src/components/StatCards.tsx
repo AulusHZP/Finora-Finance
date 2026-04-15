@@ -1,10 +1,10 @@
 import { TrendingUp, TrendingDown, Wallet, ArrowUpDown } from "lucide-react";
 
 const stats = [
-  { label: "Income", amount: "$8,450.00", change: "+12.5%", icon: TrendingUp, color: "text-success", bg: "bg-success-light", changeColor: "text-success" },
-  { label: "Expenses", amount: "$3,280.50", change: "+4.2%", icon: TrendingDown, color: "text-destructive", bg: "bg-error-light", changeColor: "text-destructive" },
-  { label: "Remaining", amount: "$5,169.50", change: "", icon: Wallet, color: "text-primary", bg: "bg-primary/10", changeColor: "" },
-  { label: "Fixed Costs", amount: "$1,840.00", change: "56% of expenses", icon: ArrowUpDown, color: "text-muted-foreground", bg: "bg-muted", changeColor: "text-muted-foreground" },
+  { label: "Receita", amount: "$8,450.00", change: "+12.5%", icon: TrendingUp, color: "text-success", bg: "bg-success-light", changeColor: "text-success" },
+  { label: "Despesas", amount: "$3,280.50", change: "+4.2%", icon: TrendingDown, color: "text-destructive", bg: "bg-error-light", changeColor: "text-destructive" },
+  { label: "Disponível", amount: "$5,169.50", change: "", icon: Wallet, color: "text-primary", bg: "bg-primary/10", changeColor: "" },
+  { label: "Custos Fixos", amount: "$1,840.00", change: "56% das despesas", icon: ArrowUpDown, color: "text-muted-foreground", bg: "bg-muted", changeColor: "text-muted-foreground" },
 ];
 
 export function StatCards() {

@@ -2,10 +2,10 @@ import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { StatCards } from "@/components/StatCards";
 import { SpendingChart } from "@/components/SpendingChart";
-import { SpendingBreakdown } from "@/components/SpendingBreakdown";
 import { TransactionTable } from "@/components/TransactionTable";
-import { GoalCards } from "@/components/GoalCards";
-import { InsightCard } from "@/components/InsightCard";
+import { DashboardGoalsWidget } from "@/components/DashboardGoalsWidget";
+import { DashboardInsights } from "@/components/DashboardInsights";
+import { PaymentMethodBreakdown } from "@/components/PaymentMethodBreakdown";
 import { FAB } from "@/components/FAB";
 import { AddTransactionSheet } from "@/components/AddTransactionSheet";
 import { ChevronRight } from "lucide-react";
@@ -16,61 +16,60 @@ const Index = () => {
 
   return (
     <AppLayout>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-6 lg:mb-8">
+      {/* Dashboard Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-5">
         <div>
-          <p className="text-sm text-muted-foreground">Good morning, John 👋</p>
+          <p className="text-sm text-muted-foreground">Bom dia, João 👋</p>
           <h1 className="text-3xl lg:text-4xl font-bold text-foreground tracking-tight mt-1">$12,580.50</h1>
-          <p className="text-xs text-muted-foreground mt-1">Available this month</p>
+          <p className="text-xs text-muted-foreground mt-1">Disponível este mês</p>
         </div>
         <button
           onClick={() => setSheetOpen(true)}
           className="hidden lg:flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-default mt-4 sm:mt-0"
         >
-          + New Transaction
+          + Nova Transação
         </button>
       </div>
 
-      {/* Stat Cards */}
-      <div className="mb-6">
-        <StatCards />
-      </div>
+      {/* Main 2-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.4fr] gap-5 min-h-[calc(100vh-400px)]">
+        {/* LEFT COLUMN - Main Content (70%) */}
+        <div className="space-y-5">
+          {/* Stat Cards */}
+          <div>
+            <StatCards />
+          </div>
 
-      {/* Chart + Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
-        <div className="lg:col-span-3">
-          <SpendingChart />
-        </div>
-        <div className="lg:col-span-2">
-          <SpendingBreakdown />
-        </div>
-      </div>
+          {/* Large Chart */}
+          <div className="bg-card rounded-lg border border-border p-5">
+            <SpendingChart />
+          </div>
 
-      {/* Insight */}
-      <div className="mb-6">
-        <InsightCard />
-      </div>
-
-      {/* Recent Transactions */}
-      <div className="glass-card p-5 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-foreground">Recent Transactions</h3>
-          <Link to="/transactions" className="text-xs font-medium text-primary flex items-center gap-0.5 hover:opacity-80 transition-default">
-            View all <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
+          {/* Transactions Table */}
+          <div className="bg-card rounded-lg border border-border p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-foreground">Todas as Transações</h3>
+              <Link to="/transactions" className="text-xs font-medium text-primary flex items-center gap-0.5 hover:opacity-80 transition-default">
+                Ver tudo <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <div className="overflow-y-auto max-h-[400px]">
+              <TransactionTable limit={15} showSearch={false} />
+            </div>
+          </div>
         </div>
-        <TransactionTable limit={5} showSearch={false} />
-      </div>
 
-      {/* Goals */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-foreground">Goals</h3>
-          <Link to="/goals" className="text-xs font-medium text-primary flex items-center gap-0.5 hover:opacity-80 transition-default">
-            View all <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
+        {/* RIGHT COLUMN - Supporting Content (30%) */}
+        <div className="space-y-5">
+          {/* Goals Widget */}
+          <DashboardGoalsWidget />
+
+          {/* Insights */}
+          <DashboardInsights />
+
+          {/* Payment Method Breakdown */}
+          <PaymentMethodBreakdown />
         </div>
-        <GoalCards limit={2} />
       </div>
 
       <FAB onClick={() => setSheetOpen(true)} />

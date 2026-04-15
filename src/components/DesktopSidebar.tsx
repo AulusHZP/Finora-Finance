@@ -1,20 +1,27 @@
-import { Home, ArrowRightLeft, Target, Upload, Settings } from "lucide-react";
+import { Home, ArrowRightLeft, Target, Upload } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { Link } from "react-router-dom";
 
 const navItems = [
-  { to: "/", icon: Home, label: "Home" },
-  { to: "/transactions", icon: ArrowRightLeft, label: "Transactions" },
-  { to: "/goals", icon: Target, label: "Goals" },
-  { to: "/import", icon: Upload, label: "Import CSV" },
-  { to: "/settings", icon: Settings, label: "Settings" },
+  { to: "/", icon: Home, label: "Início" },
+  { to: "/transactions", icon: ArrowRightLeft, label: "Transações" },
+  { to: "/goals", icon: Target, label: "Objetivos" },
+  { to: "/import", icon: Upload, label: "Importar CSV" },
 ];
 
 export function DesktopSidebar() {
   return (
     <aside className="hidden lg:flex flex-col w-60 bg-card border-r border-border h-screen sticky top-0 shrink-0">
-      <div className="p-6 pb-2">
-        <h1 className="text-lg font-semibold tracking-tight text-foreground">Finora</h1>
-        <p className="text-[11px] text-muted-foreground mt-0.5">Personal Finance</p>
+      <div className="p-4 pb-2">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-10 w-10">
+            <img src="/logo.png" alt="Finora" className="w-full h-full" />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold tracking-tight text-foreground">Finora</h1>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Finanças</p>
+          </div>
+        </div>
       </div>
       <nav className="flex flex-col gap-0.5 px-3 mt-4 flex-1">
         {navItems.map((item) => (
@@ -31,15 +38,18 @@ export function DesktopSidebar() {
         ))}
       </nav>
       <div className="p-4 border-t border-border">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+        <Link
+          to="/settings"
+          className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-hover transition-default group"
+        >
+          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-default">
             <span className="text-xs font-semibold text-primary">JD</span>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">John Doe</p>
+            <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-default">John Doe</p>
             <p className="text-[11px] text-muted-foreground">Premium</p>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   );

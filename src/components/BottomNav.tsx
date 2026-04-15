@@ -2,10 +2,10 @@ import { Home, ArrowRightLeft, Target, Upload } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 
 const navItems = [
-  { to: "/", icon: Home, label: "Home" },
-  { to: "/transactions", icon: ArrowRightLeft, label: "Transactions" },
-  { to: "/goals", icon: Target, label: "Goals" },
-  { to: "/import", icon: Upload, label: "Import" },
+  { to: "/", icon: Home, label: "Início" },
+  { to: "/transactions", icon: ArrowRightLeft, label: "Transações" },
+  { to: "/goals", icon: Target, label: "Objetivos" },
+  { to: "/import", icon: Upload, label: "Importar" },
 ];
 
 export function BottomNav() {

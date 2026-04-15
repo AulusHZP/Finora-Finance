@@ -1,16 +1,16 @@
 const categories = [
-  { name: "Food & Dining", amount: 820, pct: 25, color: "bg-chart-blue" },
-  { name: "Transport", amount: 540, pct: 16, color: "bg-chart-green" },
-  { name: "Shopping", amount: 680, pct: 21, color: "bg-chart-purple" },
-  { name: "Bills & Utilities", amount: 840, pct: 26, color: "bg-primary" },
-  { name: "Entertainment", amount: 400, pct: 12, color: "bg-chart-gray" },
+  { name: "Alimentação", amount: 820, pct: 25, color: "bg-chart-blue" },
+  { name: "Transporte", amount: 540, pct: 16, color: "bg-chart-green" },
+  { name: "Compras", amount: 680, pct: 21, color: "bg-chart-purple" },
+  { name: "Contas e Utilidades", amount: 840, pct: 26, color: "bg-primary" },
+  { name: "Entretenimento", amount: 400, pct: 12, color: "bg-chart-gray" },
 ];
 
 export function SpendingBreakdown() {
   return (
     <div className="glass-card p-5 h-full">
-      <h3 className="text-sm font-semibold text-foreground mb-1">Spending by Category</h3>
-      <p className="text-xs text-muted-foreground mb-4">This month's breakdown</p>
+      <h3 className="text-sm font-semibold text-foreground mb-1">Gastos por Categoria</h3>
+      <p className="text-xs text-muted-foreground mb-4">Resumo do mês</p>
       
       <div className="flex gap-1 h-3 rounded-full overflow-hidden mb-5">
         {categories.map((c) => (

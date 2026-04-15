@@ -28,9 +28,9 @@ export function SpendingChart() {
     <div className="glass-card p-5 h-full">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Spending Overview</h3>
+          <h3 className="text-sm font-semibold text-foreground">Resumo de Gastos</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {period === "weekly" ? "$2,090 this week" : "$18,100 this half"}
+            {period === "weekly" ? "$2,090 esta semana" : "$18,100 este mês"}
           </p>
         </div>
         <div className="flex gap-1 bg-muted rounded-lg p-0.5">
@@ -40,7 +40,7 @@ export function SpendingChart() {
               period === "weekly" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
             }`}
           >
-            Week
+            Semana
           </button>
           <button
             onClick={() => setPeriod("monthly")}
@@ -48,7 +48,7 @@ export function SpendingChart() {
               period === "monthly" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
             }`}
           >
-            Month
+            Mês
           </button>
         </div>
       </div>
@@ -73,7 +73,7 @@ export function SpendingChart() {
                 fontSize: "12px",
                 padding: "8px 12px",
               }}
-              formatter={(value: number) => [`$${value}`, "Spent"]}
+              formatter={(value: number) => [`$${value}`, "Gasto"]}
             />
             <Area type="monotone" dataKey="amount" stroke="hsl(217, 91%, 60%)" strokeWidth={2} fill="url(#colorAmount)" />
           </AreaChart>
