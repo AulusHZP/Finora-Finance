@@ -6,7 +6,7 @@ interface Goal {
   emoji: string;
 }
 
-const goals: Goal[] = [
+export const allGoals: Goal[] = [
   { id: "1", title: "New MacBook", current: 1200, target: 2500, emoji: "💻" },
   { id: "2", title: "Vacation Fund", current: 3400, target: 5000, emoji: "✈️" },
   { id: "3", title: "Emergency Fund", current: 8200, target: 10000, emoji: "🛡️" },
@@ -14,7 +14,7 @@ const goals: Goal[] = [
 ];
 
 export function GoalCards({ limit }: { limit?: number }) {
-  const items = limit ? goals.slice(0, limit) : goals;
+  const items = limit ? allGoals.slice(0, limit) : allGoals;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -23,28 +23,23 @@ export function GoalCards({ limit }: { limit?: number }) {
         const remaining = goal.target - goal.current;
 
         return (
-          <div key={goal.id} className="glass-card p-4 press-scale cursor-pointer hover:shadow-md transition-default">
+          <div key={goal.id} className="glass-card p-4 hover:shadow-md transition-default">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-2.5">
-                <span className="text-xl">{goal.emoji}</span>
-                <p className="text-sm font-medium text-foreground">{goal.title}</p>
+                <span className="text-lg">{goal.emoji}</span>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{goal.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    ${goal.current.toLocaleString()} of ${goal.target.toLocaleString()}
+                  </p>
+                </div>
               </div>
-              <span className="text-xs font-semibold text-primary">{pct}%</span>
+              <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{pct}%</span>
             </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden mb-2">
-              <div
-                className="h-full bg-primary rounded-full transition-all duration-500"
-                style={{ width: `${pct}%` }}
-              />
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                ${goal.current.toLocaleString()} of ${goal.target.toLocaleString()}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                ${remaining.toLocaleString()} left
-              </p>
-            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">${remaining.toLocaleString()} remaining</p>
           </div>
         );
       })}
