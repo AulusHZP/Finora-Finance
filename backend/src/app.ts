@@ -13,31 +13,49 @@ const allowedOrigins = env.CORS_ORIGIN.split(",")
   .filter(Boolean);
 
 app.use(helmet());
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow non-browser clients (curl, mobile apps, server-to-server)
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
 
-      // Allow localhost in development
-      if (env.NODE_ENV === "development" && origin.startsWith("http://localhost")) {
-        callback(null, true);
-        return;
-      }
+// CORS Configuration
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow non-browser clients (curl, mobile apps, server-to-server)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
 
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
+    // Allow localhost in development
+    if (env.NODE_ENV === "development" && origin.startsWith("http://localhost")) {
+      callback(null, true);
+      return;
+    }
 
-      callback(new Error(`Origin ${origin} not allowed by CORS`));
-    },
-    credentials: true
-  })
-);
+    // In production, check against allowed origins list
+    if (allowedOrigins.length > 0 && allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    // If no origins configured and in production, log warning but allow
+    // This prevents 500 errors on preflight requests
+    if (env.NODE_ENV === "production" && allowedOrigins.length === 0) {
+      console.warn(`[CORS] No CORS_ORIGIN configured in production. Allowing request from: ${origin}`);
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  maxAge: 3600
+};
+
+app.use(cors(corsOptions));
+
+// Explicit OPTIONS handler for preflight requests
+app.options("*", cors(corsOptions));
+
 app.use(express.json());
 
 app.use(router);
