@@ -47,27 +47,27 @@ export function SignupForm({ onSubmit, onLoginClick }: SignupFormProps) {
     const newErrors: typeof errors = {};
 
     if (!name.trim()) {
-      newErrors.name = "Name is required";
+      newErrors.name = "Nome e obrigatorio";
     } else if (name.trim().length < 2) {
-      newErrors.name = "Name must be at least 2 characters";
+      newErrors.name = "Nome deve ter no minimo 2 caracteres";
     }
 
     if (!email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = "Email e obrigatorio";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = "Please enter a valid email";
+      newErrors.email = "Digite um email valido";
     }
 
     if (!password) {
-      newErrors.password = "Password is required";
+      newErrors.password = "Senha e obrigatoria";
     } else if (password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password = "Senha deve ter no minimo 8 caracteres";
     }
 
     if (!confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
+      newErrors.confirmPassword = "Confirme sua senha";
     } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = "As senhas nao coincidem";
     }
 
     setErrors(newErrors);
@@ -83,7 +83,8 @@ export function SignupForm({ onSubmit, onLoginClick }: SignupFormProps) {
       setErrors({});
       await onSubmit(name, email, password);
     } catch (error) {
-      setErrors({ general: "Failed to create account. Please try again." });
+      const message = error instanceof Error ? error.message : "Falha ao criar conta";
+      setErrors({ general: message });
     } finally {
       setLoading(false);
     }
@@ -107,13 +108,13 @@ export function SignupForm({ onSubmit, onLoginClick }: SignupFormProps) {
   const getPasswordStrengthText = () => {
     switch (passwordStrength.level) {
       case "weak":
-        return "Weak";
+        return "Fraca";
       case "fair":
-        return "Fair";
+        return "Razoavel";
       case "good":
-        return "Good";
+        return "Boa";
       case "strong":
-        return "Strong";
+        return "Forte";
     }
   };
 
@@ -122,14 +123,14 @@ export function SignupForm({ onSubmit, onLoginClick }: SignupFormProps) {
       {/* Header with Back Button */}
       <div className="flex items-start justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Create your account</h1>
-          <p className="text-slate-600 text-sm">Join Finora and take control of your finances</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Criar sua conta</h1>
+          <p className="text-slate-600 text-sm">Entre no Finora e controle suas financas</p>
         </div>
         <button
           type="button"
           onClick={onLoginClick}
           className="mt-1 p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"
-          title="Back to login"
+          title="Voltar para login"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>

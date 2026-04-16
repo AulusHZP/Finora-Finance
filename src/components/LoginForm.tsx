@@ -17,13 +17,13 @@ export function LoginForm({ onSubmit, onSignupClick }: LoginFormProps) {
     const newErrors: typeof errors = {};
 
     if (!email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = "Email e obrigatorio";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = "Please enter a valid email";
+      newErrors.email = "Digite um email valido";
     }
 
     if (!password) {
-      newErrors.password = "Password is required";
+      newErrors.password = "Senha e obrigatoria";
     }
 
     setErrors(newErrors);
@@ -39,7 +39,8 @@ export function LoginForm({ onSubmit, onSignupClick }: LoginFormProps) {
       setErrors({});
       await onSubmit(email, password);
     } catch (error) {
-      setErrors({ general: "Invalid email or password" });
+      const message = error instanceof Error ? error.message : "Email ou senha invalidos";
+      setErrors({ general: message });
     } finally {
       setLoading(false);
     }

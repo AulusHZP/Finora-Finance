@@ -3,7 +3,8 @@ import { AppLayout } from "@/components/AppLayout";
 import { CreateGoalDialog } from "@/components/CreateGoalDialog";
 import { GoalsList } from "@/components/GoalsList";
 import { GoalDetails } from "@/components/GoalDetails";
-import { useGoals, Goal } from "@/hooks/useGoals";
+import { useGoals } from "@/hooks/useGoals";
+import type { Goal } from "@/hooks/useGoals";
 import { Plus } from "lucide-react";
 
 const Goals = () => {
@@ -14,8 +15,8 @@ const Goals = () => {
 
   const selectedGoal = goals.find((g) => g.id === selectedGoalId) || null;
 
-  const handleCreateGoal = (goalData: Omit<Goal, "id" | "createdAt">) => {
-    const newGoal = createGoal(goalData);
+  const handleCreateGoal = async (goalData: Omit<Goal, "id" | "createdAt">) => {
+    const newGoal = await createGoal(goalData);
     setSelectedGoalId(newGoal.id);
     setCreateDialogOpen(false);
   };
@@ -25,30 +26,30 @@ const Goals = () => {
     setCreateDialogOpen(true);
   };
 
-  const handleUpdateGoal = (goalData: Omit<Goal, "id" | "createdAt">) => {
+  const handleUpdateGoal = async (goalData: Omit<Goal, "id" | "createdAt">) => {
     if (editingGoal) {
-      updateGoal(editingGoal.id, goalData);
+      await updateGoal(editingGoal.id, goalData);
       setEditingGoal(null);
       setCreateDialogOpen(false);
     }
   };
 
-  const handleSaveGoal = (goalData: Omit<Goal, "id" | "createdAt">) => {
+  const handleSaveGoal = async (goalData: Omit<Goal, "id" | "createdAt">) => {
     if (editingGoal) {
-      handleUpdateGoal(goalData);
+      await handleUpdateGoal(goalData);
     } else {
-      handleCreateGoal(goalData);
+      await handleCreateGoal(goalData);
     }
   };
 
-  const handleAddContribution = (amount: number) => {
+  const handleAddContribution = async (amount: number) => {
     if (selectedGoalId) {
-      addContribution(selectedGoalId, amount);
+      await addContribution(selectedGoalId, amount);
     }
   };
 
-  const handleDeleteGoal = (id: string) => {
-    deleteGoal(id);
+  const handleDeleteGoal = async (id: string) => {
+    await deleteGoal(id);
     if (selectedGoalId === id) {
       setSelectedGoalId(goals.find((g) => g.id !== id)?.id || null);
     }

@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { goalAPI } from "@/services/api";
 
 export interface Goal {
   id: string;
@@ -9,41 +10,110 @@ export interface Goal {
   targetDate?: string;
   priority?: "low" | "medium" | "high";
   createdAt: string;
+  userId?: string;
+  updatedAt?: string;
 }
 
-const initialGoals: Goal[] = [
-  { id: "1", title: "New MacBook", current: 1200, target: 2500, emoji: "💻", priority: "high", createdAt: new Date().toISOString() },
-  { id: "2", title: "Vacation Fund", current: 3400, target: 5000, emoji: "✈️", priority: "medium", createdAt: new Date().toISOString() },
-  { id: "3", title: "Emergency Fund", current: 8200, target: 10000, emoji: "🛡️", priority: "high", createdAt: new Date().toISOString() },
-  { id: "4", title: "New Car", current: 5000, target: 30000, emoji: "🚗", priority: "low", createdAt: new Date().toISOString() },
-];
-
 export function useGoals() {
-  const [goals, setGoals] = useState<Goal[]>(initialGoals);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const createGoal = useCallback((goal: Omit<Goal, "id" | "createdAt">) => {
-    const newGoal: Goal = {
-      ...goal,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    };
-    setGoals((prev) => [newGoal, ...prev]);
-    return newGoal;
+  // Load goals from backend on mount
+  useEffect(() => {
+    loadGoals();
   }, []);
 
-  const updateGoal = useCallback((id: string, updates: Partial<Omit<Goal, "id" | "createdAt">>) => {
-    setGoals((prev) =>
-      prev.map((goal) => (goal.id === id ? { ...goal, ...updates } : goal))
-    );
+  const loadGoals = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await goalAPI.getGoals();
+      setGoals(data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao carregar objetivos";
+      console.error("Error loading goals:", message);
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createGoal = useCallback(
+    async (goal: Omit<Goal, "id" | "createdAt" | "userId" | "updatedAt">) => {
+      try {
+        console.log("Creating goal:", goal);
+        const newGoal = await goalAPI.createGoal({
+          title: goal.title,
+          current: goal.current,
+          target: goal.target,
+          emoji: goal.emoji,
+          targetDate: goal.targetDate,
+          priority: goal.priority,
+        });
+        setGoals((prev) => [newGoal, ...prev]);
+        return newGoal;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Erro ao criar objetivo";
+        console.error("Error creating goal:", message);
+        setError(message);
+        throw err;
+      }
+    },
+    []
+  );
+
+  const updateGoal = useCallback(
+    async (
+      id: string,
+      updates: Partial<Omit<Goal, "id" | "createdAt" | "userId" | "updatedAt">>
+    ) => {
+      try {
+        const updatedGoal = await goalAPI.updateGoal(id, updates as any);
+        setGoals((prev) =>
+          prev.map((goal) => (goal.id === id ? updatedGoal : goal))
+        );
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Erro ao atualizar objetivo";
+        console.error("Error updating goal:", message);
+        setError(message);
+        throw err;
+      }
+    },
+    []
+  );
+
+  const deleteGoal = useCallback(async (id: string) => {
+    try {
+      await goalAPI.deleteGoal(id);
+      setGoals((prev) => prev.filter((goal) => goal.id !== id));
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao deletar objetivo";
+      console.error("Error deleting goal:", message);
+      setError(message);
+      throw err;
+    }
   }, []);
 
-  const deleteGoal = useCallback((id: string) => {
-    setGoals((prev) => prev.filter((goal) => goal.id !== id));
-  }, []);
+  const addContribution = useCallback(
+    async (id: string, amount: number) => {
+      const goal = goals.find((g) => g.id === id);
+      if (goal) {
+        await updateGoal(id, { current: goal.current + amount });
+      }
+    },
+    [goals, updateGoal]
+  );
 
-  const addContribution = useCallback((id: string, amount: number) => {
-    updateGoal(id, { current: (goals.find((g) => g.id === id)?.current || 0) + amount });
-  }, [goals, updateGoal]);
-
-  return { goals, createGoal, updateGoal, deleteGoal, addContribution };
+  return {
+    goals,
+    createGoal,
+    updateGoal,
+    deleteGoal,
+    addContribution,
+    loading,
+    error,
+  };
 }

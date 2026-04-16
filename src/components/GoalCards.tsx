@@ -1,3 +1,5 @@
+import { formatCurrencyBRL } from "@/lib/currency";
+
 interface Goal {
   id: string;
   title: string;
@@ -30,7 +32,7 @@ export function GoalCards({ limit }: { limit?: number }) {
                 <div>
                   <p className="text-sm font-medium text-foreground">{goal.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    ${goal.current.toLocaleString()} of ${goal.target.toLocaleString()}
+                    {formatCurrencyBRL(goal.current)} de {formatCurrencyBRL(goal.target)}
                   </p>
                 </div>
               </div>
@@ -39,7 +41,7 @@ export function GoalCards({ limit }: { limit?: number }) {
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">${remaining.toLocaleString()} remaining</p>
+            <p className="text-[11px] text-muted-foreground mt-2">{formatCurrencyBRL(remaining)} faltam</p>
           </div>
         );
       })}

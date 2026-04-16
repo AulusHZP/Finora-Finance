@@ -1,22 +1,10 @@
 import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
+import { formatCurrencyBRL } from "@/lib/currency";
+import type { Goal } from "@/services/api";
 
-interface Goal {
-  id: string;
-  title: string;
-  current: number;
-  target: number;
-  emoji: string;
-}
-
-const mockGoals: Goal[] = [
-  { id: "1", title: "New MacBook", current: 1200, target: 2500, emoji: "💻" },
-  { id: "2", title: "Vacation Fund", current: 3400, target: 5000, emoji: "✈️" },
-  { id: "3", title: "Emergency Fund", current: 8200, target: 10000, emoji: "🛡️" },
-];
-
-export function DashboardGoalsWidget() {
-  const displayGoals = mockGoals.slice(0, 3);
+export function DashboardGoalsWidget({ goals }: { goals: Goal[] }) {
+  const displayGoals = goals.slice(0, 3);
 
   return (
     <div className="bg-card rounded-lg border border-border p-4">
@@ -28,8 +16,13 @@ export function DashboardGoalsWidget() {
       </div>
 
       <div className="space-y-2.5 mb-3.5">
+        {displayGoals.length === 0 && (
+          <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
+            <p className="text-xs text-muted-foreground">Você ainda não possui objetivos. Crie o primeiro para acompanhar seu progresso.</p>
+          </div>
+        )}
         {displayGoals.map((goal) => {
-          const pct = Math.round((goal.current / goal.target) * 100);
+          const pct = goal.target > 0 ? Math.min(100, Math.round((goal.current / goal.target) * 100)) : 0;
           return (
             <div key={goal.id} className="p-2.5 bg-muted/50 rounded-lg hover:bg-muted/80 transition-default cursor-pointer">
               <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -43,7 +36,7 @@ export function DashboardGoalsWidget() {
                 <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
               </div>
               <div className="text-[10px] text-muted-foreground mt-1">
-                ${goal.current.toLocaleString()} / ${goal.target.toLocaleString()}
+                {formatCurrencyBRL(goal.current)} / {formatCurrencyBRL(goal.target)}
               </div>
             </div>
           );

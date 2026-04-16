@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# Nova Finance
 
-TODO: Document your project here
+Aplicação de gestão financeira pessoal com rastreamento de transações, objetivos e análise de gastos.

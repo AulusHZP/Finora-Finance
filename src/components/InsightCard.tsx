@@ -9,7 +9,7 @@ export function InsightCard() {
       <div>
         <p className="text-sm font-medium text-foreground">Spending Insight</p>
         <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-          Your food expenses are 23% higher than last month. Consider meal prepping to save ~$120/month.
+          Seus gastos com alimentação estão 23% acima do mês passado. Considere preparar refeições em casa para economizar cerca de R$ 120/mês.
         </p>
       </div>
     </div>

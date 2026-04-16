@@ -1,20 +1,83 @@
 import { useState } from "react";
 import { X, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { transactionAPI } from "@/services/api";
+import { parseCurrencyInputBRL } from "@/lib/currency";
 
 interface AddTransactionSheetProps {
   open: boolean;
   onClose: () => void;
+  onTransactionAdded?: () => void;
 }
 
 const categories = ["Alimentação", "Transporte", "Compras", "Contas", "Salário", "Freelance", "Entretenimento", "Saúde"];
 const methods = ["Crédito", "Débito", "Pix", "Dinheiro", "Transferência"];
 
-export function AddTransactionSheet({ open, onClose }: AddTransactionSheetProps) {
+export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTransactionSheetProps) {
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
-  const [method, setMethod] = useState("Credit");
+  const [method, setMethod] = useState("Crédito");
+  const [isFixed, setIsFixed] = useState(false);
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async () => {
+    if (!amount || !description || !category || !method || !date) {
+      setError("Preencha todos os campos");
+      return;
+    }
+
+    const parsedAmount = parseCurrencyInputBRL(amount);
+    if (parsedAmount === null || parsedAmount <= 0) {
+      setError("Informe um valor valido maior que zero");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+      
+      console.log("Submitting transaction:", {
+        title: description,
+        amount: parsedAmount,
+        type,
+        isFixed,
+        category,
+        method,
+        date
+      });
+
+      await transactionAPI.createTransaction({
+        title: description,
+        amount: parsedAmount,
+        type,
+        isFixed,
+        category,
+        method,
+        date
+      });
+
+      // Reset form
+      setAmount("");
+      setDescription("");
+      setCategory("");
+      setMethod("Crédito");
+      setIsFixed(false);
+      setDate(new Date().toISOString().split('T')[0]);
+      setType("expense");
+      
+      onTransactionAdded?.();
+      onClose();
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Erro ao adicionar transação";
+      console.error("Transaction submission error:", errorMsg, err);
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!open) return null;
 
@@ -42,14 +105,19 @@ export function AddTransactionSheet({ open, onClose }: AddTransactionSheetProps)
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Valor</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">$</span>
-              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="w-full h-10 pl-7 pr-3 bg-muted rounded-lg text-foreground text-base font-semibold placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" autoFocus />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">R$</span>
+              <input type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="w-full h-10 pl-7 pr-3 bg-muted rounded-lg text-foreground text-base font-semibold placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" autoFocus />
             </div>
           </div>
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Descrição</label>
             <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Para que foi?" className="w-full h-10 px-3 bg-muted rounded-lg text-foreground text-sm placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Data</label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full h-10 px-3 bg-muted rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" />
           </div>
 
           <div>
@@ -70,8 +138,25 @@ export function AddTransactionSheet({ open, onClose }: AddTransactionSheetProps)
             </div>
           </div>
 
-          <button className="w-full h-10 bg-primary text-primary-foreground rounded-lg font-medium text-sm press-scale hover:opacity-90 transition-default mt-1" onClick={onClose}>
-            Adicionar Transação
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Tag</label>
+            <button
+              type="button"
+              onClick={() => setIsFixed((prev) => !prev)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-default press-scale ${isFixed ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}
+            >
+              Custo Fixo
+            </button>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-error/10 text-destructive rounded-lg text-xs font-medium">
+              {error}
+            </div>
+          )}
+
+          <button className="w-full h-10 bg-primary text-primary-foreground rounded-lg font-medium text-sm press-scale hover:opacity-90 transition-default mt-1 disabled:opacity-50" onClick={handleSubmit} disabled={loading}>
+            {loading ? "Adicionando..." : "Adicionar Transação"}
           </button>
         </div>
       </div>

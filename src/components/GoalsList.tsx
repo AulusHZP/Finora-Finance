@@ -1,5 +1,6 @@
-import { Goal } from "@/hooks/useGoals";
+import type { Goal } from "@/hooks/useGoals";
 import { Trash2, Edit2 } from "lucide-react";
+import { formatCurrencyBRL } from "@/lib/currency";
 
 interface GoalsListProps {
   goals: Goal[];
@@ -54,7 +55,7 @@ export function GoalsList({
                   />
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>${goal.current.toLocaleString()} / ${goal.target.toLocaleString()}</span>
+                  <span>{formatCurrencyBRL(goal.current)} / {formatCurrencyBRL(goal.target)}</span>
                   <span className="font-semibold text-primary">{pct}%</span>
                 </div>
               </div>

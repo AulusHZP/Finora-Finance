@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { Goal } from "@/hooks/useGoals";
+import type { Goal } from "@/hooks/useGoals";
+import { parseCurrencyInputBRL } from "@/lib/currency";
 
 interface CreateGoalDialogProps {
   open: boolean;
@@ -24,10 +25,21 @@ export function CreateGoalDialog({ open, onClose, onSave, editingGoal }: CreateG
       return;
     }
 
+    const parsedTarget = parseCurrencyInputBRL(target);
+    const parsedCurrent = current ? parseCurrencyInputBRL(current) : 0;
+
+    if (parsedTarget === null || parsedTarget <= 0) {
+      return;
+    }
+
+    if (parsedCurrent === null || parsedCurrent < 0) {
+      return;
+    }
+
     onSave({
       title: title.trim(),
-      target: parseFloat(target),
-      current: current ? parseFloat(current) : 0,
+      target: parsedTarget,
+      current: parsedCurrent,
       emoji,
       priority,
       targetDate: targetDate || undefined,
@@ -78,13 +90,14 @@ export function CreateGoalDialog({ open, onClose, onSave, editingGoal }: CreateG
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Valor Meta *</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">
-                $
+                R$
               </span>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
-                placeholder="0.00"
+                placeholder="0,00"
                 className="w-full h-10 pl-7 pr-3 bg-muted rounded-lg text-foreground text-base font-semibold placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
               />
             </div>
@@ -95,13 +108,14 @@ export function CreateGoalDialog({ open, onClose, onSave, editingGoal }: CreateG
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Valor Economizado Atualmente</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">
-                $
+                R$
               </span>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={current}
                 onChange={(e) => setCurrent(e.target.value)}
-                placeholder="0.00"
+                placeholder="0,00"
                 className="w-full h-10 pl-7 pr-3 bg-muted rounded-lg text-foreground text-base font-semibold placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
               />
             </div>

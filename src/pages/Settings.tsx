@@ -1,15 +1,73 @@
 import { AppLayout } from "@/components/AppLayout";
 import { useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  clearAuthSession,
+  getStoredUser,
+  logoutRequest,
+  meRequest,
+  setStoredUser,
+  updateProfileRequest
+} from "@/lib/auth";
 
 const SettingsPage = () => {
   const navigate = useNavigate();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [currency, setCurrency] = useState("BRL (R$)");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const handleLogout = () => {
-    // Limpar dados locais se houver
-    localStorage.removeItem("user");
-    // Redirecionar para login
-    navigate("/auth");
+  useEffect(() => {
+    const hydrate = async () => {
+      try {
+        const cachedUser = getStoredUser();
+        if (cachedUser) {
+          setName(cachedUser.name);
+          setEmail(cachedUser.email);
+        }
+
+        const user = await meRequest();
+        setStoredUser(user);
+        setName(user.name);
+        setEmail(user.email);
+      } catch {
+        clearAuthSession();
+        navigate("/auth");
+      }
+    };
+
+    void hydrate();
+  }, [navigate]);
+
+  const handleSaveProfile = async () => {
+    try {
+      setLoading(true);
+      setMessage(null);
+
+      const updated = await updateProfileRequest({ name, email });
+      setStoredUser(updated);
+      setName(updated.name);
+      setEmail(updated.email);
+      setMessage("Perfil atualizado com sucesso");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Falha ao atualizar perfil";
+      setMessage(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutRequest();
+    } catch {
+      // Logout em JWT stateless e seguro mesmo em caso de erro de rede.
+    } finally {
+      clearAuthSession();
+      navigate("/auth");
+    }
   };
 
   return (
@@ -25,19 +83,30 @@ const SettingsPage = () => {
           <div className="space-y-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Nome</label>
-              <input type="text" defaultValue="John Doe" className="w-full h-9 px-3 bg-muted rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" />
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full h-9 px-3 bg-muted rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Email</label>
-              <input type="email" defaultValue="john@example.com" className="w-full h-9 px-3 bg-muted rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-9 px-3 bg-muted rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Moeda</label>
-              <select className="w-full h-9 px-3 bg-muted rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default">
-                <option>USD ($)</option>
-                <option>EUR (€)</option>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="w-full h-9 px-3 bg-muted rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
+              >
                 <option>BRL (R$)</option>
-                <option>GBP (£)</option>
               </select>
             </div>
           </div>
@@ -67,9 +136,17 @@ const SettingsPage = () => {
           </div>
         </div>
 
+        {message && (
+          <p className="text-sm text-muted-foreground">{message}</p>
+        )}
+
         <div className="flex gap-3">
-          <button className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-default">
-            Salvar Alterações
+          <button
+            onClick={handleSaveProfile}
+            disabled={loading || !name.trim() || !email.trim()}
+            className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-default disabled:opacity-50"
+          >
+            {loading ? "Salvando..." : "Salvar Alteracoes"}
           </button>
           <button
             onClick={handleLogout}

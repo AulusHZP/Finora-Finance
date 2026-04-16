@@ -1,3 +1,5 @@
+import { formatCurrencyBRL } from "@/lib/currency";
+
 const categories = [
   { name: "Alimentação", amount: 820, pct: 25, color: "bg-chart-blue" },
   { name: "Transporte", amount: 540, pct: 16, color: "bg-chart-green" },
@@ -26,7 +28,7 @@ export function SpendingBreakdown() {
               <span className="text-sm text-foreground">{c.name}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-foreground">${c.amount}</span>
+              <span className="text-sm font-medium text-foreground">{formatCurrencyBRL(c.amount)}</span>
               <span className="text-xs text-muted-foreground w-8 text-right">{c.pct}%</span>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { Home, ArrowRightLeft, Target, Upload } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
+import { getStoredUser } from "@/lib/auth";
 
 const navItems = [
   { to: "/", icon: Home, label: "Início" },
@@ -10,6 +11,15 @@ const navItems = [
 ];
 
 export function DesktopSidebar() {
+  const user = getStoredUser();
+  const displayName = user?.name || "Usuario";
+  const initials = displayName
+    .split(" ")
+    .map((part) => part.charAt(0))
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <aside className="hidden lg:flex flex-col w-60 bg-card border-r border-border h-screen sticky top-0 shrink-0">
       <div className="p-4 pb-2">
@@ -43,10 +53,10 @@ export function DesktopSidebar() {
           className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-hover transition-default group"
         >
           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-default">
-            <span className="text-xs font-semibold text-primary">JD</span>
+            <span className="text-xs font-semibold text-primary">{initials || "US"}</span>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-default">John Doe</p>
+            <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-default">{displayName}</p>
             <p className="text-[11px] text-muted-foreground">Premium</p>
           </div>
         </Link>

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Goal } from "@/hooks/useGoals";
+import type { Goal } from "@/hooks/useGoals";
 import { ChevronRight } from "lucide-react";
+import { formatCurrencyBRL, parseCurrencyInputBRL } from "@/lib/currency";
 
 interface GoalDetailsProps {
   goal: Goal | null;
@@ -9,6 +10,7 @@ interface GoalDetailsProps {
 
 export function GoalDetails({ goal, onAddContribution }: GoalDetailsProps) {
   const [contributionAmount, setContributionAmount] = useState("");
+  const parsedContribution = parseCurrencyInputBRL(contributionAmount);
 
   if (!goal) {
     return (
@@ -30,9 +32,8 @@ export function GoalDetails({ goal, onAddContribution }: GoalDetailsProps) {
   };
 
   const handleAddContribution = () => {
-    const amount = parseFloat(contributionAmount);
-    if (!isNaN(amount) && amount > 0) {
-      onAddContribution(amount);
+    if (parsedContribution !== null && parsedContribution > 0) {
+      onAddContribution(parsedContribution);
       setContributionAmount("");
     }
   };
@@ -72,15 +73,15 @@ export function GoalDetails({ goal, onAddContribution }: GoalDetailsProps) {
         <div className="grid grid-cols-3 gap-3 text-center pt-3 border-t border-muted">
           <div>
             <p className="text-xs text-muted-foreground mb-1">Economizado</p>
-            <p className="font-bold text-foreground">${goal.current.toLocaleString()}</p>
+            <p className="font-bold text-foreground">{formatCurrencyBRL(goal.current)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">Meta</p>
-            <p className="font-bold text-foreground">${goal.target.toLocaleString()}</p>
+            <p className="font-bold text-foreground">{formatCurrencyBRL(goal.target)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">Faltam</p>
-            <p className="font-bold text-destructive">${remaining.toLocaleString()}</p>
+            <p className="font-bold text-destructive">{formatCurrencyBRL(remaining)}</p>
           </div>
         </div>
       </div>
@@ -106,20 +107,21 @@ export function GoalDetails({ goal, onAddContribution }: GoalDetailsProps) {
         <p className="text-sm font-semibold text-foreground mb-3">Adicionar Contribuição</p>
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">
-              $
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm pointer-events-none">
+              R$
             </span>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={contributionAmount}
               onChange={(e) => setContributionAmount(e.target.value)}
               placeholder="Insira o valor"
-              className="w-full h-10 pl-7 pr-3 bg-card rounded-lg text-foreground text-sm placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
+              className="w-full h-10 pl-11 pr-3 bg-card rounded-lg text-foreground text-sm placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
             />
           </div>
           <button
             onClick={handleAddContribution}
-            disabled={!contributionAmount || parseFloat(contributionAmount) <= 0}
+            disabled={parsedContribution === null || parsedContribution <= 0}
             className="h-10 px-4 bg-primary text-primary-foreground rounded-lg font-medium text-sm press-scale hover:opacity-90 transition-default disabled:opacity-50 flex items-center gap-1"
           >
             <span>Adicionar</span>
