@@ -22,6 +22,12 @@ app.use(
         return;
       }
 
+      // Allow localhost in development
+      if (env.NODE_ENV === "development" && origin.startsWith("http://localhost")) {
+        callback(null, true);
+        return;
+      }
+
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
         return;
