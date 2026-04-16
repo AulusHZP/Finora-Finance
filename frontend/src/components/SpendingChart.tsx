@@ -139,7 +139,7 @@ export function SpendingChart({ transactions }: { transactions: Transaction[] })
           </button>
         </div>
       </div>
-      <div className="h-[220px]">
+      <div className="w-full h-[220px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>

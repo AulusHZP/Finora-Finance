@@ -77,8 +77,7 @@ export const transactionAPI = {
       method: "GET",
       cache: "no-store",
       headers: {
-        Authorization: `Bearer ${token}`,
-        "Cache-Control": "no-cache"
+        Authorization: `Bearer ${token}`
       }
     });
 
@@ -234,8 +233,7 @@ export const goalAPI = {
       method: "GET",
       cache: "no-store",
       headers: {
-        Authorization: `Bearer ${token}`,
-        "Cache-Control": "no-cache"
+        Authorization: `Bearer ${token}`
       }
     });
 
