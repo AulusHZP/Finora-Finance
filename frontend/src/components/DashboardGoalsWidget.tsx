@@ -26,16 +26,16 @@ export function DashboardGoalsWidget({ goals }: { goals: Goal[] }) {
           return (
             <div key={goal.id} className="p-2.5 bg-muted/50 rounded-lg hover:bg-muted/80 transition-default cursor-pointer">
               <div className="flex items-start justify-between gap-2 mb-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{goal.emoji}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm flex-shrink-0">{goal.emoji}</span>
                   <span className="text-xs font-medium text-foreground truncate">{goal.title}</span>
                 </div>
-                <span className="text-xs font-semibold text-primary">{pct}%</span>
+                <span className="text-xs font-semibold text-primary flex-shrink-0">{pct}%</span>
               </div>
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
               </div>
-              <div className="text-[10px] text-muted-foreground mt-1">
+              <div className="text-[10px] text-muted-foreground mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
                 {formatCurrencyBRL(goal.current)} / {formatCurrencyBRL(goal.target)}
               </div>
             </div>

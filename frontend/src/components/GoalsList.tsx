@@ -1,5 +1,5 @@
 import type { Goal } from "@/hooks/useGoals";
-import { Trash2, Edit2 } from "lucide-react";
+import { Trash2, Edit2, Target } from "lucide-react";
 import { formatCurrencyBRL } from "@/lib/currency";
 
 interface GoalsListProps {
@@ -20,9 +20,11 @@ export function GoalsList({
   if (goals.length === 0) {
     return (
       <div className="h-full flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="text-4xl mb-2">🎯</div>
-          <p className="text-muted-foreground text-sm">Nenhum objetivo ainda</p>
+        <div className="flex flex-col items-center text-center">
+          <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-3">
+            <Target className="h-8 w-8 text-primary" />
+          </div>
+          <p className="text-muted-foreground text-sm font-medium">Nenhum objetivo ainda</p>
         </div>
       </div>
     );

@@ -1,4 +1,4 @@
-import { Home, ArrowRightLeft, Target, Upload } from "lucide-react";
+import { Home, ArrowRightLeft, Target, Upload, User } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 
 const navItems = [
@@ -6,6 +6,7 @@ const navItems = [
   { to: "/transactions", icon: ArrowRightLeft, label: "Transações" },
   { to: "/goals", icon: Target, label: "Objetivos" },
   { to: "/import", icon: Upload, label: "Importar" },
+  { to: "/settings", icon: User, label: "Perfil" },
 ];
 
 export function BottomNav() {

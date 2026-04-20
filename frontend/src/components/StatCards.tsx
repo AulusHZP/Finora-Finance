@@ -77,19 +77,26 @@ export function StatCards({ transactions }: { transactions: Transaction[] }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4">
       {stats.map((s) => (
-        <div key={s.label} className="glass-card p-4 lg:p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
-            <div className={`h-7 w-7 rounded-lg ${s.bg} flex items-center justify-center`}>
+        <div key={s.label} className="glass-card p-4 lg:p-5 flex flex-col h-full">
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <span className="text-xs font-medium text-muted-foreground leading-tight line-clamp-2">{s.label}</span>
+            <div className={`h-7 w-7 rounded-lg ${s.bg} flex items-center justify-center flex-shrink-0`}>
               <s.icon className={`h-3.5 w-3.5 ${s.color}`} />
             </div>
           </div>
-          <p className={`text-xl lg:text-2xl font-semibold tracking-tight ${s.amountColor}`}>{formatCurrencyBRL(s.amount)}</p>
-          {s.change && (
-            <p className={`text-[11px] mt-1 ${s.changeColor}`}>{s.change}</p>
-          )}
+          <div className="mt-auto">
+            <p className={`text-lg lg:text-xl font-bold tracking-tight line-clamp-1 tabular-nums ${s.amountColor}`} title={formatCurrencyBRL(s.amount)}>
+              {formatCurrencyBRL(s.amount)}
+            </p>
+            <p
+              className={`text-[11px] mt-1.5 min-h-[2.25rem] line-clamp-2 ${s.changeColor || "text-transparent"}`}
+              title={s.change || undefined}
+            >
+              {s.change || ""}
+            </p>
+          </div>
         </div>
       ))}
     </div>

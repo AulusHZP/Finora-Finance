@@ -5,7 +5,7 @@ import { GoalsList } from "@/components/GoalsList";
 import { GoalDetails } from "@/components/GoalDetails";
 import { useGoals } from "@/hooks/useGoals";
 import type { Goal } from "@/hooks/useGoals";
-import { Plus } from "lucide-react";
+import { Plus, Target } from "lucide-react";
 
 const Goals = () => {
   const { goals, createGoal, updateGoal, deleteGoal, addContribution } = useGoals();
@@ -77,20 +77,23 @@ const Goals = () => {
       </div>
 
       {goals.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="text-5xl mb-4">🎯</div>
-          <h2 className="text-xl font-bold text-foreground mb-2">Você ainda não tem objetivos</h2>
-          <p className="text-muted-foreground mb-6 text-center max-w-sm">
-            Crie seu primeiro objetivo para começar a acompanhar sua jornada financeira
+        <div className="flex flex-col items-center justify-center py-20 px-4 bg-card rounded-2xl border border-border shadow-sm">
+          <div className="h-24 w-24 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+            <Target className="h-12 w-12 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-3 text-center">Você ainda não tem objetivos</h2>
+          <p className="text-muted-foreground mb-8 text-center max-w-md text-base leading-relaxed">
+            Estabelecer metas é o primeiro passo para alcançá-las. Crie seu primeiro objetivo para começar a acompanhar sua jornada financeira.
           </p>
           <button
             onClick={() => {
               setEditingGoal(null);
               setCreateDialogOpen(true);
             }}
-            className="h-10 px-6 bg-primary text-primary-foreground rounded-lg font-medium text-sm press-scale hover:opacity-90 transition-default"
+            className="flex items-center gap-2 h-12 px-8 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:opacity-90 transition-all shadow-md hover:shadow-lg press-scale"
           >
-            Criar Seu Primeiro Objetivo
+            <Plus className="h-5 w-5" />
+            Criar Primeiro Objetivo
           </button>
         </div>
       ) : (

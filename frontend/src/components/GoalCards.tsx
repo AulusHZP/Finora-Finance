@@ -27,16 +27,16 @@ export function GoalCards({ limit }: { limit?: number }) {
         return (
           <div key={goal.id} className="glass-card p-4 hover:shadow-md transition-default">
             <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="text-lg">{goal.emoji}</span>
-                <div>
-                  <p className="text-sm font-medium text-foreground">{goal.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="text-lg flex-shrink-0">{goal.emoji}</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{goal.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
                     {formatCurrencyBRL(goal.current)} de {formatCurrencyBRL(goal.target)}
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{pct}%</span>
+              <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0 ml-2">{pct}%</span>
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />

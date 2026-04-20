@@ -105,8 +105,8 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Valor</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">R$</span>
-              <input type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="w-full h-10 pl-7 pr-3 bg-muted rounded-lg text-foreground text-base font-semibold placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" autoFocus />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold text-base pointer-events-none">R$</span>
+              <input type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="w-full h-10 pl-11 pr-3 bg-muted rounded-lg text-foreground text-base font-semibold placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" autoFocus />
             </div>
           </div>
 

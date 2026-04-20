@@ -82,10 +82,15 @@ const Index = () => {
   return (
     <AppLayout>
       {/* Dashboard Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-5">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-5 gap-4">
+        <div className="min-w-0">
           <p className="text-sm text-muted-foreground">Resumo financeiro atual</p>
-          <h1 className="text-3xl lg:text-4xl font-bold text-foreground tracking-tight mt-1">{formatCurrencyBRL(availableTotal)}</h1>
+          <h1 
+            className="text-3xl lg:text-4xl font-bold text-foreground tracking-tight mt-1 line-clamp-1"
+            title={formatCurrencyBRL(availableTotal)}
+          >
+            {formatCurrencyBRL(availableTotal)}
+          </h1>
           <p className="text-xs text-muted-foreground mt-1">Disponível acumulado</p>
         </div>
         <button
