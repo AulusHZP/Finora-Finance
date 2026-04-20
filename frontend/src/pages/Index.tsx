@@ -128,7 +128,7 @@ const Index = () => {
                 Ver tudo <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </div>
-            <div className="overflow-auto max-h-[400px]">
+            <div className="max-h-[400px] overflow-y-auto overflow-x-hidden pr-2 [scrollbar-gutter:stable]">
               <TransactionTable
                 limit={15}
                 showSearch={false}

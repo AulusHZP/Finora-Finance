@@ -200,7 +200,7 @@ export function TransactionTable({
         })}
       </div>
 
-      <div className="hidden sm:block overflow-x-auto">
+      <div className="hidden sm:block overflow-x-auto [scrollbar-gutter:stable]">
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
@@ -214,7 +214,7 @@ export function TransactionTable({
                 <span className="inline-flex items-center gap-1">Data <ArrowUpDown className="h-3 w-3" /></span>
               </th>
               <th
-                className="text-right text-xs font-medium text-muted-foreground pb-2 cursor-pointer hover:text-foreground transition-default hidden sm:table-cell"
+                className="text-right text-xs font-medium text-muted-foreground pb-2 pr-3 cursor-pointer hover:text-foreground transition-default hidden sm:table-cell"
                 onClick={() => toggleSort("amount")}
               >
                 <span className="inline-flex items-center gap-1 justify-end">Valor <ArrowUpDown className="h-3 w-3" /></span>
@@ -269,7 +269,7 @@ export function TransactionTable({
                   <td className="py-3 pr-4 hidden sm:table-cell">
                     <span className="text-xs text-muted-foreground">{formatDate(tx.date)}</span>
                   </td>
-                  <td className="py-3 text-right hidden sm:table-cell">
+                  <td className="py-3 pr-3 text-right hidden sm:table-cell">
                     <span className={`text-sm font-semibold ${tx.type === "income" ? "text-success" : "text-destructive"}`}>
                       {tx.type === "income" ? "+" : "-"}{formatCurrency(Math.abs(tx.amount))}
                     </span>
