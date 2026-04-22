@@ -22,6 +22,7 @@ export interface CreateTransactionPayload {
   category: string;
   method: string;
   date: string;
+  installmentCount?: number;
 }
 
 export interface ImportTransactionPayload extends CreateTransactionPayload {}

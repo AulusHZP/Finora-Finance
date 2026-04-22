@@ -18,6 +18,8 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [method, setMethod] = useState("Crédito");
+  const [isInstallment, setIsInstallment] = useState(false);
+  const [installmentCount, setInstallmentCount] = useState("2");
   const [isFixed, setIsFixed] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
@@ -35,6 +37,12 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
       return;
     }
 
+    const parsedInstallmentCount = Number.parseInt(installmentCount, 10);
+    if (isInstallment && (!Number.isFinite(parsedInstallmentCount) || parsedInstallmentCount < 2 || parsedInstallmentCount > 48)) {
+      setError("Informe um numero de parcelas entre 2 e 48");
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
@@ -46,7 +54,8 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
         isFixed,
         category,
         method,
-        date
+        date,
+        installmentCount: isInstallment ? parsedInstallmentCount : 1
       });
 
       await transactionAPI.createTransaction({
@@ -56,7 +65,8 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
         isFixed,
         category,
         method,
-        date
+        date,
+        installmentCount: isInstallment ? parsedInstallmentCount : 1
       });
 
       // Reset form
@@ -64,6 +74,8 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
       setDescription("");
       setCategory("");
       setMethod("Crédito");
+      setIsInstallment(false);
+      setInstallmentCount("2");
       setIsFixed(false);
       setDate(new Date().toISOString().split('T')[0]);
       setType("expense");
@@ -133,10 +145,56 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Método de Pagamento</label>
             <div className="flex flex-wrap gap-1.5">
               {methods.map((m) => (
-                <button key={m} onClick={() => setMethod(m)} className={`px-3 py-1 rounded-full text-xs font-medium transition-default press-scale ${method === m ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}>{m}</button>
+                <button
+                  key={m}
+                  onClick={() => {
+                    setMethod(m);
+                    if (m !== "Crédito") {
+                      setIsInstallment(false);
+                    }
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-default press-scale ${method === m ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}
+                >
+                  {m}
+                </button>
               ))}
             </div>
           </div>
+
+          {method === "Crédito" && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Compra parcelada?</label>
+              <div className="flex gap-1.5 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setIsInstallment(false)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-default press-scale ${!isInstallment ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}
+                >
+                  Nao
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsInstallment(true)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-default press-scale ${isInstallment ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}
+                >
+                  Sim
+                </button>
+              </div>
+
+              {isInstallment && (
+                <input
+                  type="number"
+                  min={2}
+                  max={48}
+                  step={1}
+                  value={installmentCount}
+                  onChange={(e) => setInstallmentCount(e.target.value)}
+                  placeholder="Numero de parcelas"
+                  className="w-full h-10 px-3 bg-muted rounded-lg text-foreground text-sm placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
+                />
+              )}
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Tag</label>
