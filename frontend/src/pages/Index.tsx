@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { StatCards } from "@/components/StatCards";
 import { SpendingChart } from "@/components/SpendingChart";
@@ -11,14 +11,12 @@ import { AddTransactionSheet } from "@/components/AddTransactionSheet";
 import { ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatCurrencyBRL } from "@/lib/currency";
-import { goalAPI, transactionAPI, type Goal, type Transaction } from "@/services/api";
+import { dashboardAPI, type DashboardData } from "@/services/api";
 
 const Index = () => {
   const navigate = useNavigate();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -27,13 +25,8 @@ const Index = () => {
       setLoading(true);
       setLoadError(null);
 
-      const [transactionsResponse, goalsResponse] = await Promise.all([
-        transactionAPI.getTransactions(),
-        goalAPI.getGoals(),
-      ]);
-
-      setTransactions(transactionsResponse);
-      setGoals(goalsResponse);
+      const dashboardResponse = await dashboardAPI.getDashboard();
+      setDashboard(dashboardResponse);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Falha ao carregar dados do dashboard");
     } finally {
@@ -43,7 +36,7 @@ const Index = () => {
 
   useEffect(() => {
     loadDashboardData();
-  }, [refreshTrigger, loadDashboardData]);
+  }, [loadDashboardData]);
 
   useEffect(() => {
     const handleTransactionsUpdated = () => {
@@ -63,21 +56,9 @@ const Index = () => {
     };
   }, [loadDashboardData]);
 
-  const availableTotal = useMemo(() => {
-    const income = transactions
-      .filter((tx) => tx.type === "income")
-      .reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
-
-    const expense = transactions
-      .filter((tx) => tx.type === "expense")
-      .reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
-
-    return income - expense;
-  }, [transactions]);
-
-  const handleTransactionAdded = () => {
-    setRefreshTrigger(prev => prev + 1);
-  };
+  const transactions = dashboard?.transactions ?? [];
+  const goals = dashboard?.goals ?? [];
+  const availableTotal = dashboard?.summary.availableBalance ?? 0;
 
   return (
     <AppLayout>
@@ -154,7 +135,7 @@ const Index = () => {
       </div>
 
       <FAB onClick={() => setSheetOpen(true)} />
-      <AddTransactionSheet open={sheetOpen} onClose={() => setSheetOpen(false)} onTransactionAdded={handleTransactionAdded} />
+      <AddTransactionSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
     </AppLayout>
   );
 };

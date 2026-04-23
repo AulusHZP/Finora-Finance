@@ -7,6 +7,7 @@ import {
   updateGoal,
   deleteGoal,
 } from "../services/goal.service";
+import { invalidateDashboardCache } from "../services/dashboard.service";
 import { ok } from "../utils/http";
 
 const createGoalSchema = z.object({
@@ -63,6 +64,8 @@ export const createGoalController = async (
       targetDate: payload.targetDate ? new Date(payload.targetDate) : undefined,
       priority: payload.priority,
     });
+
+    invalidateDashboardCache(userId);
 
     console.log("Goal created:", JSON.stringify(goal, null, 2));
     return res.status(201).json(ok("Goal created successfully", goal));
@@ -179,6 +182,8 @@ export const updateGoalController = async (
       priority: payload.priority,
     });
 
+    invalidateDashboardCache(userId);
+
     return res.status(200).json(ok("Goal updated successfully", updatedGoal));
   } catch (error) {
     return next(error);
@@ -218,6 +223,8 @@ export const deleteGoalController = async (
     }
 
     await deleteGoal(id);
+
+    invalidateDashboardCache(userId);
 
     return res.status(200).json(ok("Goal deleted successfully", { id }));
   } catch (error) {

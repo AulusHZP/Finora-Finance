@@ -9,6 +9,7 @@ import {
   updateTransaction,
   deleteTransaction
 } from "../services/transaction.service";
+import { invalidateDashboardCache } from "../services/dashboard.service";
 import { ok } from "../utils/http";
 
 const createTransactionSchema = z.object({
@@ -92,6 +93,7 @@ export const createTransactionController = async (req: Request, res: Response, n
         });
 
     console.log("Transaction created:", JSON.stringify(transaction, null, 2));
+    invalidateDashboardCache(userId);
     return res.status(201).json(ok("Transaction created successfully", transaction));
   } catch (error) {
     console.error("Error in createTransactionController:", error);
@@ -182,6 +184,8 @@ export const clearImportedTransactionsController = async (req: Request, res: Res
 
     const result = await deleteImportedTransactionsByUser(userId);
 
+    invalidateDashboardCache(userId);
+
     return res.status(200).json(ok("Imported CSV transactions deleted successfully", { deleted: result.count }));
   } catch (error) {
     return next(error);
@@ -213,6 +217,8 @@ export const importTransactionsController = async (req: Request, res: Response, 
         date: new Date(transaction.date)
       }))
     );
+
+    invalidateDashboardCache(userId);
 
     return res.status(201).json(ok("Transactions imported successfully", { imported: result.count }));
   } catch (error) {
@@ -265,6 +271,8 @@ export const updateTransactionController = async (req: Request, res: Response, n
 
     const transaction = await updateTransaction(id, userId, data);
 
+    invalidateDashboardCache(userId);
+
     return res.status(200).json(ok("Transaction updated successfully", transaction));
   } catch (error) {
     return next(error);
@@ -284,6 +292,8 @@ export const deleteTransactionController = async (req: Request, res: Response, n
     }
 
     await deleteTransaction(id, userId);
+
+    invalidateDashboardCache(userId);
 
     return res.status(200).json(ok("Transaction deleted successfully"));
   } catch (error) {

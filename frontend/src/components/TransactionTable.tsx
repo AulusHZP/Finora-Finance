@@ -37,7 +37,6 @@ type SortField = "date" | "amount" | "title";
 export function TransactionTable({
   limit,
   showSearch = true,
-  refreshTrigger,
   onViewDetails,
   onRowClick,
   onlyCsvImported = false,
@@ -45,7 +44,6 @@ export function TransactionTable({
 }: {
   limit?: number;
   showSearch?: boolean;
-  refreshTrigger?: number;
   onViewDetails?: (transaction: Transaction) => void;
   onRowClick?: (transaction: Transaction) => void;
   onlyCsvImported?: boolean;
@@ -76,10 +74,10 @@ export function TransactionTable({
     };
 
     loadTransactions();
-  }, [refreshTrigger, transactionsData]);
+  }, [transactionsData]);
 
   const filtered = useMemo(() => {
-    const source = transactionsData ?? transactions;
+    const source = transactionsData || transactions;
     let items = [...source];
     if (onlyCsvImported) items = items.filter((t) => t.method === "Importação CSV");
     if (filterType !== "all") items = items.filter((t) => t.type === filterType);

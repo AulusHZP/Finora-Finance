@@ -33,6 +33,7 @@ model Transaction {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([userId, date])
 }
 
 model Goal {
@@ -49,4 +50,5 @@ model Goal {
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
+  @@index([userId, createdAt])
 }

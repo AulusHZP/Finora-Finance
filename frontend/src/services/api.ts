@@ -25,10 +25,35 @@ export interface CreateTransactionPayload {
   installmentCount?: number;
 }
 
-export interface ImportTransactionPayload extends CreateTransactionPayload {}
+export type ImportTransactionPayload = CreateTransactionPayload;
+
+export interface DashboardSummary {
+  incomeTotal: number;
+  expenseTotal: number;
+  availableBalance: number;
+  fixedCostsTotal: number;
+  expenseOfIncomeRatio: number;
+  fixedCostsRatio: number;
+}
+
+export interface DashboardData {
+  transactions: Transaction[];
+  goals: Goal[];
+  summary: DashboardSummary;
+  generatedAt: string;
+}
 
 const TOKEN_KEY = "finora_token";
 const TRANSACTIONS_UPDATED_EVENT = "transactions-updated";
+const DEFAULT_CACHE_TTL_MS = 30_000;
+
+type CacheEntry<T> = {
+  expiresAt: number;
+  value?: T;
+  promise?: Promise<T>;
+};
+
+const apiCache = new Map<string, CacheEntry<unknown>>();
 
 const notifyTransactionsUpdated = () => {
   if (typeof window !== "undefined") {
@@ -36,8 +61,95 @@ const notifyTransactionsUpdated = () => {
   }
 };
 
+const invalidateCache = (prefix: string) => {
+  for (const key of apiCache.keys()) {
+    if (key === prefix || key.startsWith(`${prefix}:`)) {
+      apiCache.delete(key);
+    }
+  }
+};
+
 const getAuthToken = (): string | null => {
+  if (typeof localStorage === "undefined") {
+    return null;
+  }
+
   return localStorage.getItem(TOKEN_KEY);
+};
+
+const buildCacheKey = (resource: string, token: string) => `${resource}:${token}`;
+
+const getCachedOrFetch = async <T>(
+  cacheKey: string,
+  fetcher: () => Promise<T>,
+  ttlMs = DEFAULT_CACHE_TTL_MS
+): Promise<T> => {
+  const now = Date.now();
+  const cached = apiCache.get(cacheKey) as CacheEntry<T> | undefined;
+
+  if (cached?.value !== undefined && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  if (cached?.promise) {
+    return cached.promise;
+  }
+
+  const promise = fetcher()
+    .then((value) => {
+      apiCache.set(cacheKey, {
+        expiresAt: Date.now() + ttlMs,
+        value
+      });
+
+      return value;
+    })
+    .catch((error) => {
+      apiCache.delete(cacheKey);
+      throw error;
+    });
+
+  apiCache.set(cacheKey, {
+    expiresAt: now + ttlMs,
+    promise
+  });
+
+  return promise;
+};
+
+const requestJson = async <T>(url: string, init: RequestInit, token: string): Promise<T> => {
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(url, {
+    ...init,
+    headers
+  });
+
+  const responseText = await response.text();
+  const responseData = responseText ? JSON.parse(responseText) : null;
+
+  if (!response.ok) {
+    throw new Error(responseData?.message || `Request failed with status ${response.status}`);
+  }
+
+  return responseData as T;
+};
+
+const serializeTransactionPayload = (payload: CreateTransactionPayload) => ({
+  ...payload,
+  date: new Date(payload.date).toISOString()
+});
+
+const serializeGoalPayload = (payload: CreateGoalPayload) => ({
+  ...payload,
+  targetDate: payload.targetDate ? new Date(payload.targetDate).toISOString() : undefined
+});
+
+const invalidateDashboardData = () => {
+  invalidateCache("dashboard");
+  invalidateCache("transactions");
+  invalidateCache("goals");
 };
 
 export const transactionAPI = {
@@ -45,27 +157,15 @@ export const transactionAPI = {
     const token = getAuthToken();
     if (!token) throw new Error("Não autenticado");
 
-    const body = JSON.stringify({
-      ...payload,
-      date: new Date(payload.date).toISOString()
-    });
-
-    const response = await fetch(`${API_BASE_URL}/transactions`, {
+    const responseData = await requestJson<{ data: Transaction }>(`${API_BASE_URL}/transactions`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
-      body
-    });
+      body: JSON.stringify(serializeTransactionPayload(payload))
+    }, token);
 
-    const responseData = await response.json();
-
-    if (!response.ok) {
-      console.error("Transaction creation error:", responseData);
-      throw new Error(responseData.message || "Falha ao criar transação");
-    }
-
+    invalidateDashboardData();
     notifyTransactionsUpdated();
     return responseData.data;
   },
@@ -74,59 +174,45 @@ export const transactionAPI = {
     const token = getAuthToken();
     if (!token) throw new Error("Not authenticated");
 
-    const response = await fetch(`${API_BASE_URL}/transactions`, {
-      method: "GET",
-      cache: "no-store",
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+    const cacheKey = buildCacheKey("transactions:list", token);
+
+    return getCachedOrFetch(cacheKey, async () => {
+      const data = await requestJson<{ data: { transactions: Transaction[] } }>(`${API_BASE_URL}/transactions`, {
+        method: "GET"
+      }, token);
+
+      return data.data.transactions;
     });
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch transactions");
-    }
-
-    const data = await response.json();
-    return data.data.transactions;
   },
 
   async updateTransaction(id: string, payload: Partial<CreateTransactionPayload>): Promise<Transaction> {
     const token = getAuthToken();
     if (!token) throw new Error("Not authenticated");
 
-    const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
+    const responseData = await requestJson<{ data: Transaction }>(`${API_BASE_URL}/transactions/${id}`, {
       method: "PUT",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify(payload)
-    });
+    }, token);
 
-    if (!response.ok) {
-      throw new Error("Failed to update transaction");
-    }
-
-    const data = await response.json();
+    invalidateDashboardData();
     notifyTransactionsUpdated();
-    return data.data;
+    return responseData.data;
   },
 
   async deleteTransaction(id: string): Promise<void> {
     const token = getAuthToken();
     if (!token) throw new Error("Not authenticated");
 
-    const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
+    await requestJson(`${API_BASE_URL}/transactions/${id}`, {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${token}`
       }
-    });
+    }, token);
 
-    if (!response.ok) {
-      throw new Error("Failed to delete transaction");
-    }
-
+    invalidateDashboardData();
     notifyTransactionsUpdated();
   },
 
@@ -134,21 +220,15 @@ export const transactionAPI = {
     const token = getAuthToken();
     if (!token) throw new Error("Não autenticado");
 
-    const response = await fetch(`${API_BASE_URL}/transactions/import-csv`, {
+    const responseData = await requestJson<{ data: { imported: number } }>(`${API_BASE_URL}/transactions/import-csv`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({ transactions })
-    });
+    }, token);
 
-    const responseData = await response.json();
-
-    if (!response.ok) {
-      throw new Error(responseData.message || "Falha ao importar CSV");
-    }
-
+    invalidateDashboardData();
     notifyTransactionsUpdated();
     return responseData.data;
   },
@@ -157,19 +237,13 @@ export const transactionAPI = {
     const token = getAuthToken();
     if (!token) throw new Error("Não autenticado");
 
-    const response = await fetch(`${API_BASE_URL}/transactions/import-csv`, {
+    const responseData = await requestJson<{ data: { deleted: number } }>(`${API_BASE_URL}/transactions/import-csv`, {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${token}`
       }
-    });
+    }, token);
 
-    const responseData = await response.json();
-
-    if (!response.ok) {
-      throw new Error(responseData.message || "Falha ao limpar transações importadas");
-    }
-
+    invalidateDashboardData();
     notifyTransactionsUpdated();
     return responseData.data;
   }
@@ -202,27 +276,16 @@ export const goalAPI = {
     const token = getAuthToken();
     if (!token) throw new Error("Não autenticado");
 
-    const body = JSON.stringify({
-      ...payload,
-      targetDate: payload.targetDate ? new Date(payload.targetDate).toISOString() : undefined
-    });
-
-    const response = await fetch(`${API_BASE_URL}/goals`, {
+    const responseData = await requestJson<{ data: Goal }>(`${API_BASE_URL}/goals`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
-      body
-    });
+      body: JSON.stringify(serializeGoalPayload(payload))
+    }, token);
 
-    const responseData = await response.json();
-
-    if (!response.ok) {
-      console.error("Goal creation error:", responseData);
-      throw new Error(responseData.message || "Falha ao criar objetivo");
-    }
-
+    invalidateDashboardData();
+    notifyTransactionsUpdated();
     return responseData.data;
   },
 
@@ -230,56 +293,66 @@ export const goalAPI = {
     const token = getAuthToken();
     if (!token) throw new Error("Não autenticado");
 
-    const response = await fetch(`${API_BASE_URL}/goals`, {
-      method: "GET",
-      cache: "no-store",
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+    const cacheKey = buildCacheKey("goals:list", token);
+
+    return getCachedOrFetch(cacheKey, async () => {
+      const data = await requestJson<{ data: { goals: Goal[] } }>(`${API_BASE_URL}/goals`, {
+        method: "GET"
+      }, token);
+
+      return data.data.goals;
     });
-
-    if (!response.ok) {
-      throw new Error("Falha ao buscar objetivos");
-    }
-
-    const data = await response.json();
-    return data.data.goals;
   },
 
   async updateGoal(id: string, payload: Partial<CreateGoalPayload>): Promise<Goal> {
     const token = getAuthToken();
     if (!token) throw new Error("Não autenticado");
 
-    const response = await fetch(`${API_BASE_URL}/goals/${id}`, {
+    const responseData = await requestJson<{ data: Goal }>(`${API_BASE_URL}/goals/${id}`, {
       method: "PUT",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify(payload)
-    });
+    }, token);
 
-    if (!response.ok) {
-      throw new Error("Falha ao atualizar objetivo");
-    }
-
-    const data = await response.json();
-    return data.data;
+    invalidateDashboardData();
+    notifyTransactionsUpdated();
+    return responseData.data;
   },
 
   async deleteGoal(id: string): Promise<void> {
     const token = getAuthToken();
     if (!token) throw new Error("Não autenticado");
 
-    const response = await fetch(`${API_BASE_URL}/goals/${id}`, {
+    await requestJson(`${API_BASE_URL}/goals/${id}`, {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${token}`
       }
-    });
+    }, token);
 
-    if (!response.ok) {
-      throw new Error("Falha ao deletar objetivo");
+    invalidateDashboardData();
+    notifyTransactionsUpdated();
+  }
+};
+
+export const dashboardAPI = {
+  async getDashboard(forceRefresh = false): Promise<DashboardData> {
+    const token = getAuthToken();
+    if (!token) throw new Error("Não autenticado");
+
+    const cacheKey = buildCacheKey("dashboard", token);
+
+    if (forceRefresh) {
+      apiCache.delete(cacheKey);
     }
+
+    return getCachedOrFetch(cacheKey, async () => {
+      const data = await requestJson<{ data: { dashboard: DashboardData } }>(`${API_BASE_URL}/dashboard`, {
+        method: "GET"
+      }, token);
+
+      return data.data.dashboard;
+    }, 15_000);
   }
 };

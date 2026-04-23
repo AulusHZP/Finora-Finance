@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { TransactionTable } from "@/components/TransactionTable";
 import { AddTransactionSheet } from "@/components/AddTransactionSheet";
@@ -7,7 +7,6 @@ import { parseCurrencyInputBRL } from "@/lib/currency";
 
 const Transactions = () => {
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [title, setTitle] = useState("");
@@ -23,9 +22,38 @@ const Transactions = () => {
   const [onlyCsvImported, setOnlyCsvImported] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [transactionList, setTransactionList] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadTransactions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await transactionAPI.getTransactions();
+      setTransactionList(data);
+    } catch (err) {
+      console.error("Falha ao carregar transações:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTransactions();
+  }, [loadTransactions]);
+
+  useEffect(() => {
+    const handleTransactionsUpdated = () => {
+      loadTransactions();
+    };
+
+    window.addEventListener("transactions-updated", handleTransactionsUpdated);
+    return () => {
+      window.removeEventListener("transactions-updated", handleTransactionsUpdated);
+    };
+  }, [loadTransactions]);
 
   const handleTransactionAdded = () => {
-    setRefreshTrigger(prev => prev + 1);
+    loadTransactions();
   };
 
   useEffect(() => {
@@ -67,7 +95,6 @@ const Transactions = () => {
       setNotice(null);
 
       const result = await transactionAPI.clearImportedTransactions();
-      setRefreshTrigger((prev) => prev + 1);
       setNotice(`${result.deleted} transações importadas foram apagadas.`);
       if (detailsOpen) {
         closeDetails();
@@ -104,7 +131,6 @@ const Transactions = () => {
         date
       });
 
-      setRefreshTrigger((prev) => prev + 1);
       closeDetails();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao salvar transação");
@@ -127,7 +153,6 @@ const Transactions = () => {
       setDeleting(true);
       setError(null);
       await transactionAPI.deleteTransaction(selectedTransaction.id);
-      setRefreshTrigger((prev) => prev + 1);
       closeDetails();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao apagar transação");
@@ -173,9 +198,9 @@ const Transactions = () => {
       {error && !detailsOpen && <p className="text-xs text-destructive mb-3">{error}</p>}
       <div className="glass-card p-5">
         <TransactionTable
-          refreshTrigger={refreshTrigger}
           onViewDetails={openDetails}
           onlyCsvImported={onlyCsvImported}
+          transactionsData={transactionList}
         />
       </div>
       <AddTransactionSheet open={sheetOpen} onClose={() => setSheetOpen(false)} onTransactionAdded={handleTransactionAdded} />
