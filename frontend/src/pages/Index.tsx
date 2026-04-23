@@ -113,7 +113,6 @@ const Index = () => {
               <TransactionTable
                 limit={15}
                 showSearch={false}
-                refreshTrigger={refreshTrigger}
                 transactionsData={transactions}
                 onRowClick={() => navigate("/transactions")}
               />
