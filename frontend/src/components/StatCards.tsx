@@ -1,37 +1,69 @@
 import { TrendingUp, TrendingDown, Wallet, ArrowUpDown } from "lucide-react";
 import { formatCurrencyBRL } from "@/lib/currency";
-import type { Transaction } from "@/services/api";
+import type { Transaction, DashboardSummary } from "@/services/api";
 
 const FIXED_COST_REGEX = /(aluguel|moradia|energia|água|agua|internet|assinatura|condomínio|condominio|conta|seguro|plano)/i;
 
-export function StatCards({ transactions }: { transactions: Transaction[] }) {
-  let incomeTotal = 0;
-  let expenseTotal = 0;
-  let fixedCostsTotal = 0;
+export function StatCards({
+  transactions,
+  summary,
+}: {
+  transactions: Transaction[];
+  summary?: DashboardSummary;
+}) {
+  // If summary is provided by the backend, use it directly (accounts for carryover)
+  let incomeTotal: number;
+  let expenseTotal: number;
+  let fixedCostsTotal: number;
+  let availableTotal: number;
+  let carryoverBalance: number;
 
-  transactions.forEach((tx) => {
-    const amount = Math.abs(Number(tx.amount) || 0);
-    const isExpense = tx.type === "expense";
-    const isIncome = tx.type === "income";
+  if (summary) {
+    incomeTotal = summary.incomeTotal;
+    expenseTotal = summary.expenseTotal;
+    fixedCostsTotal = summary.fixedCostsTotal;
+    availableTotal = summary.availableBalance;
+    carryoverBalance = summary.carryoverBalance ?? 0;
+  } else {
+    // Fallback: compute from transactions locally (no carryover info)
+    incomeTotal = 0;
+    expenseTotal = 0;
+    fixedCostsTotal = 0;
+    carryoverBalance = 0;
 
-    if (isIncome) {
-      incomeTotal += amount;
-    }
+    transactions.forEach((tx) => {
+      const amount = Math.abs(Number(tx.amount) || 0);
+      const isExpense = tx.type === "expense";
+      const isIncome = tx.type === "income";
 
-    if (isExpense) {
-      expenseTotal += amount;
-
-      const searchableText = `${tx.title} ${tx.category}`;
-      const isTaggedFixed = Boolean(tx.isFixed);
-      if (isTaggedFixed || FIXED_COST_REGEX.test(searchableText)) {
-        fixedCostsTotal += amount;
+      if (isIncome) {
+        incomeTotal += amount;
       }
-    }
-  });
 
-  const availableTotal = incomeTotal - expenseTotal;
+      if (isExpense) {
+        expenseTotal += amount;
+
+        const searchableText = `${tx.title} ${tx.category}`;
+        const isTaggedFixed = Boolean(tx.isFixed);
+        if (isTaggedFixed || FIXED_COST_REGEX.test(searchableText)) {
+          fixedCostsTotal += amount;
+        }
+      }
+    });
+
+    availableTotal = incomeTotal - expenseTotal;
+  }
+
   const fixedCostsRatio = expenseTotal > 0 ? Math.round((fixedCostsTotal / expenseTotal) * 100) : 0;
   const expenseOfIncomeRatio = incomeTotal > 0 ? Math.round((expenseTotal / incomeTotal) * 100) : 0;
+
+  // Build the carryover label for the Disponível card
+  const carryoverLabel =
+    carryoverBalance > 0
+      ? `+${formatCurrencyBRL(carryoverBalance)} do mês anterior`
+      : carryoverBalance < 0
+        ? `${formatCurrencyBRL(carryoverBalance)} do mês anterior`
+        : "";
 
   const stats = [
     {
@@ -57,12 +89,12 @@ export function StatCards({ transactions }: { transactions: Transaction[] }) {
     {
       label: "Disponível",
       amount: availableTotal,
-      change: "",
+      change: carryoverLabel,
       icon: Wallet,
       color: "text-primary",
       amountColor: "text-foreground",
       bg: "bg-primary/10",
-      changeColor: ""
+      changeColor: carryoverBalance > 0 ? "text-success" : carryoverBalance < 0 ? "text-destructive" : ""
     },
     {
       label: "Custos Fixos",

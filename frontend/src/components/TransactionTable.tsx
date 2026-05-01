@@ -97,8 +97,12 @@ export function TransactionTable({
   };
 
   const formatDate = (d: string) => {
-    const date = new Date(d);
-    return date.toLocaleDateString("pt-BR", { month: "short", day: "numeric" });
+    // Extract YYYY-MM-DD directly from the ISO string to avoid timezone shifts
+    const datePart = d.split("T")[0];
+    const [year, month, day] = datePart.split("-").map(Number);
+    // Use UTC date to prevent local timezone from shifting the day
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.toLocaleDateString("pt-BR", { month: "short", day: "numeric", timeZone: "UTC" });
   };
 
   const formatCurrency = (amount: number) =>

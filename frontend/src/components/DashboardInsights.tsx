@@ -2,7 +2,13 @@ import { AlertCircle, TrendingUp, Lightbulb, Target, Receipt } from "lucide-reac
 import type { Goal, Transaction } from "@/services/api";
 import { formatCurrencyBRL } from "@/lib/currency";
 
-const monthKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}`;
+const parseTxDate = (dateStr: string) => {
+  const datePart = dateStr.split("T")[0];
+  const [year, month, day] = datePart.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
+const monthKey = (date: Date) => `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
 
 const getLatestTransactionDate = (transactions: Transaction[]): Date => {
   if (transactions.length === 0) {
@@ -10,28 +16,29 @@ const getLatestTransactionDate = (transactions: Transaction[]): Date => {
   }
 
   return transactions.reduce((latest, tx) => {
-    const txDate = new Date(tx.date);
+    const txDate = parseTxDate(tx.date);
     return txDate > latest ? txDate : latest;
-  }, new Date(transactions[0].date));
+  }, parseTxDate(transactions[0].date));
 };
 
 export function DashboardInsights({ transactions, goals }: { transactions: Transaction[]; goals: Goal[] }) {
   const expenseTransactions = transactions.filter((tx) => tx.type === "expense");
   const latestExpenseDate = getLatestTransactionDate(expenseTransactions);
   const currentMonthKey = monthKey(latestExpenseDate);
-  const previousMonthKey = monthKey(new Date(latestExpenseDate.getFullYear(), latestExpenseDate.getMonth() - 1, 1));
+  const prevMonthDate = new Date(Date.UTC(latestExpenseDate.getUTCFullYear(), latestExpenseDate.getUTCMonth() - 1, 1));
+  const previousMonthKey = monthKey(prevMonthDate);
 
   const currentExpenses = expenseTransactions
-    .filter((tx) => monthKey(new Date(tx.date)) === currentMonthKey)
+    .filter((tx) => monthKey(parseTxDate(tx.date)) === currentMonthKey)
     .reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
 
   const previousExpenses = expenseTransactions
-    .filter((tx) => monthKey(new Date(tx.date)) === previousMonthKey)
+    .filter((tx) => monthKey(parseTxDate(tx.date)) === previousMonthKey)
     .reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
 
   const expenseByCategory: Record<string, number> = {};
   expenseTransactions.forEach((tx) => {
-    if (monthKey(new Date(tx.date)) !== currentMonthKey) {
+    if (monthKey(parseTxDate(tx.date)) !== currentMonthKey) {
       return;
     }
     expenseByCategory[tx.category] = (expenseByCategory[tx.category] || 0) + Math.abs(Number(tx.amount) || 0);

@@ -3,8 +3,17 @@ import { useMemo, useState } from "react";
 import { formatCurrencyBRL, parseCurrencyInputBRL } from "@/lib/currency";
 import type { Transaction } from "@/services/api";
 
-const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-const monthKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}`;
+// Parse a transaction date string (ISO) into its UTC calendar parts to avoid timezone shift
+const parseTxDate = (dateStr: string) => {
+  // Dates are stored as ISO strings (e.g. "2026-05-01T12:00:00.000Z")
+  // We extract YYYY-MM-DD and use UTC to avoid local timezone shifting the day
+  const datePart = dateStr.split("T")[0];
+  const [year, month, day] = datePart.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
+const dayKey = (date: Date) => `${date.getUTCFullYear()}-${date.getUTCMonth()}-${date.getUTCDate()}`;
+const monthKey = (date: Date) => `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
 
 const normalizeType = (type: unknown): "income" | "expense" => {
   const normalized = String(type || "").trim().toLowerCase();
@@ -45,9 +54,9 @@ const getLatestTransactionDate = (transactions: Transaction[]): Date => {
   }
 
   return transactions.reduce((latest, tx) => {
-    const txDate = new Date(tx.date);
+    const txDate = parseTxDate(tx.date);
     return txDate > latest ? txDate : latest;
-  }, new Date(transactions[0].date));
+  }, parseTxDate(transactions[0].date));
 };
 
 const buildWeeklyExpenseData = (transactions: Transaction[]) => {
@@ -63,7 +72,7 @@ const buildWeeklyExpenseData = (transactions: Transaction[]) => {
       return;
     }
 
-    const date = new Date(tx.date);
+    const date = parseTxDate(tx.date);
     const key = dayKey(date);
     expenseMap.set(key, (expenseMap.get(key) || 0) + Math.abs(parseAmount(tx.amount)));
   });
@@ -90,7 +99,7 @@ const buildMonthlyExpenseData = (transactions: Transaction[]) => {
       return;
     }
 
-    const date = new Date(tx.date);
+    const date = parseTxDate(tx.date);
     const key = monthKey(date);
     expenseMap.set(key, (expenseMap.get(key) || 0) + Math.abs(parseAmount(tx.amount)));
   });

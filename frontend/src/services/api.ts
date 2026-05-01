@@ -34,6 +34,7 @@ export interface DashboardSummary {
   fixedCostsTotal: number;
   expenseOfIncomeRatio: number;
   fixedCostsRatio: number;
+  carryoverBalance: number;
 }
 
 export interface DashboardData {
@@ -138,7 +139,9 @@ const requestJson = async <T>(url: string, init: RequestInit, token: string): Pr
 
 const serializeTransactionPayload = (payload: CreateTransactionPayload) => ({
   ...payload,
-  date: new Date(payload.date).toISOString()
+  // Append noon UTC time so the date never shifts to a different calendar day
+  // due to timezone offsets (e.g. UTC-3 would make "2026-05-01" appear as Apr 30)
+  date: new Date(`${payload.date}T12:00:00Z`).toISOString()
 });
 
 const serializeGoalPayload = (payload: CreateGoalPayload) => ({
@@ -189,12 +192,17 @@ export const transactionAPI = {
     const token = getAuthToken();
     if (!token) throw new Error("Not authenticated");
 
+    const serializedPayload = {
+      ...payload,
+      ...(payload.date ? { date: new Date(`${payload.date}T12:00:00Z`).toISOString() } : {})
+    };
+
     const responseData = await requestJson<{ data: Transaction }>(`${API_BASE_URL}/transactions/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(serializedPayload)
     }, token);
 
     invalidateDashboardData();

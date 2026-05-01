@@ -34,6 +34,7 @@ export type DashboardSummary = {
   fixedCostsTotal: number;
   expenseOfIncomeRatio: number;
   fixedCostsRatio: number;
+  carryoverBalance: number;
 };
 
 export type DashboardData = {
@@ -49,12 +50,46 @@ const FIXED_COST_REGEX = /(aluguel|moradia|energia|água|agua|internet|assinatur
 
 const normalizeAmount = (amount: number) => Math.abs(Number(amount) || 0);
 
-const buildSummary = (transactions: DashboardTransaction[]): DashboardSummary => {
+/**
+ * Returns start and end of the current month in UTC-agnostic local boundaries.
+ * We store dates in UTC but the user operates in local time, so we construct
+ * the month boundaries using the server's perspective of "now".
+ * To avoid timezone-shift issues we use UTC month math (dates are saved at
+ * midnight UTC when the frontend sends "YYYY-MM-DD" as a full ISO string).
+ */
+const getCurrentMonthBounds = () => {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const start = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
+  return { start, end };
+};
+
+const buildSummary = (
+  allTransactions: DashboardTransaction[],
+  currentMonthStart: Date
+): DashboardSummary => {
+  // Split transactions into current month vs previous months
+  const currentMonth = allTransactions.filter((t) => t.date >= currentMonthStart);
+  const previousMonths = allTransactions.filter((t) => t.date < currentMonthStart);
+
+  // Calculate carryover (surplus from all previous months)
+  let prevIncome = 0;
+  let prevExpense = 0;
+  for (const t of previousMonths) {
+    const amount = normalizeAmount(t.amount);
+    if (t.type === "income") prevIncome += amount;
+    if (t.type === "expense") prevExpense += amount;
+  }
+  const carryoverBalance = prevIncome - prevExpense;
+
+  // Calculate current month totals
   let incomeTotal = 0;
   let expenseTotal = 0;
   let fixedCostsTotal = 0;
 
-  for (const transaction of transactions) {
+  for (const transaction of currentMonth) {
     const amount = normalizeAmount(transaction.amount);
     const isIncome = transaction.type === "income";
     const isExpense = transaction.type === "expense";
@@ -73,24 +108,34 @@ const buildSummary = (transactions: DashboardTransaction[]): DashboardSummary =>
     }
   }
 
+  // Available balance = carryover from previous months + current month income - current month expenses
+  const effectiveIncome = incomeTotal + (carryoverBalance > 0 ? carryoverBalance : 0);
+
   return {
     incomeTotal,
     expenseTotal,
-    availableBalance: incomeTotal - expenseTotal,
+    availableBalance: effectiveIncome - expenseTotal,
     fixedCostsTotal,
     expenseOfIncomeRatio: incomeTotal > 0 ? Math.round((expenseTotal / incomeTotal) * 100) : 0,
-    fixedCostsRatio: expenseTotal > 0 ? Math.round((fixedCostsTotal / expenseTotal) * 100) : 0
+    fixedCostsRatio: expenseTotal > 0 ? Math.round((fixedCostsTotal / expenseTotal) * 100) : 0,
+    carryoverBalance
   };
 };
 
 const buildDashboardValue = (transactions: DashboardTransaction[], goals: DashboardGoal[]): DashboardData => {
+  const { start: currentMonthStart } = getCurrentMonthBounds();
+
+  // Sort all transactions newest first
   const sortedTransactions = [...transactions].sort((left, right) => right.date.getTime() - left.date.getTime());
   const sortedGoals = [...goals].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 
+  // Dashboard list shows only CURRENT MONTH transactions
+  const currentMonthTransactions = sortedTransactions.filter((t) => t.date >= currentMonthStart);
+
   return {
-    transactions: sortedTransactions,
+    transactions: currentMonthTransactions,
     goals: sortedGoals,
-    summary: buildSummary(sortedTransactions),
+    summary: buildSummary(sortedTransactions, currentMonthStart),
     generatedAt: new Date().toISOString()
   };
 };

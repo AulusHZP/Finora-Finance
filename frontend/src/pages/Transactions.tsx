@@ -65,7 +65,7 @@ const Transactions = () => {
     setAmount(String(selectedTransaction.amount).replace(".", ","));
     setCategory(selectedTransaction.category);
     setMethod(selectedTransaction.method);
-    setDate(new Date(selectedTransaction.date).toISOString().split("T")[0]);
+    setDate(selectedTransaction.date.split("T")[0]);
     setType(selectedTransaction.type);
     setIsFixed(Boolean(selectedTransaction.isFixed));
     setError(null);

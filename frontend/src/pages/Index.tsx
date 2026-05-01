@@ -91,7 +91,7 @@ const Index = () => {
         <div className="space-y-5">
           {/* Stat Cards */}
           <div>
-            <StatCards transactions={transactions} />
+            <StatCards transactions={transactions} summary={dashboard?.summary} />
           </div>
 
           {/* Large Chart */}
