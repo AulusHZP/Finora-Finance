@@ -124,7 +124,7 @@ export function DashboardInsights({ transactions, goals }: { transactions: Trans
   const displayInsights = insights.slice(0, 3);
 
   return (
-    <div className="flex flex-col gap-4 h-full justify-between">
+    <div className="flex flex-col gap-4">
       {displayInsights.map((insight) => {
         const IconComponent = insight.icon;
         return (
