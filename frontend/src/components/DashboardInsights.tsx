@@ -61,10 +61,11 @@ export function DashboardInsights({ transactions, goals }: { transactions: Trans
     insights.push({
       id: "top-category",
       icon: Lightbulb,
-      title: "Maior Categoria de Gasto",
-      message: `${topCategory[0]} lidera seus gastos no período (${formatCurrencyBRL(topCategory[1])}).`,
-      color: "text-primary",
-      bgColor: "bg-primary/5",
+      title: "Maior Categoria",
+      message: `${topCategory[0]} lidera seus gastos (${formatCurrencyBRL(topCategory[1])}).`,
+      color: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-100 dark:bg-blue-900/50",
+      cardColor: "bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/50"
     });
   }
 
@@ -72,10 +73,11 @@ export function DashboardInsights({ transactions, goals }: { transactions: Trans
     insights.push({
       id: "highest-expense",
       icon: Receipt,
-      title: "Maior Gasto Registrado",
+      title: "Maior Gasto",
       message: `${highestExpense.title}: ${formatCurrencyBRL(highestExpense.absAmount)}.`,
-      color: "text-muted-foreground",
-      bgColor: "bg-muted/60",
+      color: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-100 dark:bg-blue-900/50",
+      cardColor: "bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/50"
     });
   }
 
@@ -85,12 +87,13 @@ export function DashboardInsights({ transactions, goals }: { transactions: Trans
     insights.push({
       id: "expense-trend",
       icon: increase ? AlertCircle : TrendingUp,
-      title: increase ? "Alerta de Gastos" : "Evolução de Gastos",
+      title: increase ? "Cuidado com os Gastos" : "Gastos Reduzidos",
       message: increase
-        ? `As despesas subiram ${pct.toFixed(1)}% em relação ao mês anterior.`
-        : `As despesas caíram ${Math.abs(pct).toFixed(1)}% em relação ao mês anterior.`,
-      color: increase ? "text-destructive" : "text-success",
-      bgColor: increase ? "bg-destructive/5" : "bg-success-light/20",
+        ? `Despesas subiram ${pct.toFixed(1)}% este mês.`
+        : `Despesas caíram ${Math.abs(pct).toFixed(1)}% este mês. Ritmo excelente!`,
+      color: increase ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400",
+      bgColor: increase ? "bg-rose-100 dark:bg-rose-900/50" : "bg-emerald-100 dark:bg-emerald-900/50",
+      cardColor: increase ? "bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/50" : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/50"
     });
   }
 
@@ -100,8 +103,9 @@ export function DashboardInsights({ transactions, goals }: { transactions: Trans
       icon: Target,
       title: "Bom Progresso",
       message: `Você já atingiu ${Math.round(topGoal.progress)}% da meta ${topGoal.title}.`,
-      color: "text-success",
-      bgColor: "bg-success-light/20",
+      color: "text-emerald-600 dark:text-emerald-400",
+      bgColor: "bg-emerald-100 dark:bg-emerald-900/50",
+      cardColor: "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/50"
     });
   }
 
@@ -110,38 +114,31 @@ export function DashboardInsights({ transactions, goals }: { transactions: Trans
       id: "starter",
       icon: TrendingUp,
       title: "Sem dados suficientes",
-      message: "Adicione mais transações para receber insights personalizados do seu comportamento financeiro.",
-      color: "text-primary",
-      bgColor: "bg-primary/5",
+      message: "Adicione mais transações para receber insights.",
+      color: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-100 dark:bg-blue-900/50",
+      cardColor: "bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/50"
     });
   }
 
   const displayInsights = insights.slice(0, 3);
 
   return (
-    <div className="bg-card rounded-2xl border border-border/50 p-5 lg:p-6 shadow-sm h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4 pb-2 border-b border-border/30">
-        <h3 className="text-base font-bold text-foreground">Insights Financeiros</h3>
-      </div>
-
-      <div className="space-y-3 flex-1">
-        {displayInsights.map((insight) => {
-          const IconComponent = insight.icon;
-          return (
-            <div key={insight.id} className="group p-4 bg-background border border-border/50 rounded-xl hover:border-primary/30 transition-all duration-300 hover:shadow-sm">
-              <div className="flex items-start gap-3">
-                <div className={`h-8 w-8 rounded-full ${insight.bgColor} flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110`}>
-                  <IconComponent className={`h-4 w-4 ${insight.color}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">{insight.title}</p>
-                  <p className="text-[13px] text-muted-foreground leading-relaxed">{insight.message}</p>
-                </div>
-              </div>
+    <div className="flex flex-col gap-4 h-full justify-between">
+      {displayInsights.map((insight) => {
+        const IconComponent = insight.icon;
+        return (
+          <div key={insight.id} className={`border rounded-3xl p-5 flex gap-4 items-start shadow-sm transition-all hover:shadow-md ${insight.cardColor}`}>
+            <div className={`${insight.bgColor} p-2.5 rounded-2xl shrink-0 ${insight.color}`}>
+              <IconComponent className="w-5 h-5" />
             </div>
-          );
-        })}
-      </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-1">{insight.title}</h3>
+              <p className="text-xs leading-relaxed text-muted-foreground">{insight.message}</p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

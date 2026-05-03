@@ -122,64 +122,70 @@ export function SpendingChart({ transactions }: { transactions: Transaction[] })
   const total = data.reduce((sum, item) => sum + item.amount, 0);
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-card rounded-3xl border border-border/50 p-6 shadow-sm flex flex-col h-full ring-1 ring-black/5 dark:ring-white/5 group transition-all hover:shadow-md">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Resumo de Gastos</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {`${formatCurrencyBRL(total)} ${period === "weekly" ? "esta semana" : "este mês"}`}
+          <h2 className="text-lg font-semibold text-foreground">Resumo de Gastos</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Evolução do seu saldo - {period === "weekly" ? "esta semana" : "este mês"}
           </p>
         </div>
-        <div className="flex gap-1 bg-muted rounded-lg p-0.5">
+        <div className="flex gap-1 bg-muted rounded-xl p-1">
           <button
             onClick={() => setPeriod("weekly")}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-default ${
-              period === "weekly" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              period === "weekly" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Semana
           </button>
           <button
             onClick={() => setPeriod("monthly")}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-default ${
-              period === "monthly" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              period === "monthly" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Mês
           </button>
         </div>
       </div>
-      <div className="w-full h-[220px]">
+      <div className="flex-1 w-full min-h-[250px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 4, right: 8, left: 16, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.12} />
-                <stop offset="95%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0} />
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 91%)" vertical={false} />
-            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(220, 9%, 46%)" }} dy={8} />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              width={78}
-              tickMargin={8}
-              tick={{ fontSize: 11, fill: "hsl(220, 9%, 46%)" }}
-              tickFormatter={(v) => formatCurrencyBRL(Number(v))}
+            <XAxis 
+              dataKey="name" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} 
+              dy={10} 
             />
-            <Tooltip
-              contentStyle={{
-                background: "hsl(0, 0%, 100%)",
-                border: "1px solid hsl(220, 13%, 91%)",
-                borderRadius: "8px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-                fontSize: "12px",
-                padding: "8px 12px",
-              }}
+            <YAxis 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+              tickFormatter={(v) => `R$${v}`}
+            />
+            <Tooltip 
+              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+              itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
+              labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
               formatter={(value: number) => [formatCurrencyBRL(value), "Gasto"]}
             />
-            <Area type="monotone" dataKey="amount" stroke="hsl(217, 91%, 60%)" strokeWidth={2} fill="url(#colorAmount)" />
+            <Area 
+              type="monotone" 
+              dataKey="amount" 
+              stroke="#3b82f6" 
+              strokeWidth={3}
+              fillOpacity={1} 
+              fill="url(#colorAmount)" 
+              activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }}
+            />
           </AreaChart>
         </ResponsiveContainer>
       </div>

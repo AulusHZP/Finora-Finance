@@ -85,38 +85,40 @@ const Index = () => {
 
         {/* ROW 2: Chart & Goals */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
-          <div className="lg:col-span-8 bg-card rounded-2xl border border-border/50 p-5 lg:p-6 shadow-sm">
+          <div className="lg:col-span-8">
             <SpendingChart transactions={transactions} />
           </div>
-          <div className="lg:col-span-4 flex flex-col gap-5 lg:gap-6">
+          <div className="lg:col-span-4">
             <DashboardGoalsWidget goals={goals} />
           </div>
         </div>
 
         {/* ROW 3: Bottom Section Split (Table + Insights/Payments) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
-          
           {/* Table */}
-          <div className="lg:col-span-8 bg-card rounded-2xl border border-border/50 p-5 lg:p-6 shadow-sm flex flex-col h-full max-h-[600px]">
-            <div className="flex items-center justify-between mb-4 border-b border-border/50 pb-4">
-              <h2 className="text-base font-bold text-foreground">Últimas Transações</h2>
-              <Link to="/transactions" className="text-sm font-medium text-primary hover:opacity-80 transition-opacity flex items-center gap-1">
-                Ver tudo <ChevronRight className="h-4 w-4" />
-              </Link>
-            </div>
-            <div className="flex-1 overflow-y-auto pr-2 [scrollbar-gutter:stable] -mr-2">
-              <TransactionTable
-                limit={10}
-                showSearch={false}
-                transactionsData={transactions}
-                onRowClick={() => navigate("/transactions")}
-              />
+          <div className="lg:col-span-8">
+            <div className="bg-card rounded-3xl border border-border/50 p-6 shadow-sm flex flex-col h-full ring-1 ring-black/5 dark:ring-white/5">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-foreground">Últimas Transações</h2>
+                <Link to="/transactions" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
+                  Ver todas <ChevronRight className="h-4 w-4" />
+                </Link>
+              </div>
+              <div className="flex-1 overflow-y-auto pr-2 [scrollbar-gutter:stable] -mr-2">
+                <TransactionTable
+                  limit={10}
+                  showSearch={false}
+                  transactionsData={transactions}
+                  onRowClick={() => navigate("/transactions")}
+                />
+              </div>
             </div>
           </div>
 
           {/* Right Column: Insights & Payments */}
-          <div className="lg:col-span-4 space-y-5 lg:space-y-6">
+          <div className="lg:col-span-4 space-y-5 lg:gap-6 flex flex-col justify-between">
             <DashboardInsights transactions={transactions} goals={goals} />
+            {/* Keeping PaymentMethodBreakdown outside of the prompt scope but aligned */}
             <PaymentMethodBreakdown transactions={transactions} />
           </div>
         </div>
