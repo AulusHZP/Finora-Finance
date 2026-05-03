@@ -74,20 +74,20 @@ export function StatCards({
         <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 blur-2xl transition-transform group-hover:scale-125 duration-700" />
         <div className="absolute -bottom-6 -left-6 h-28 w-28 rounded-full bg-black/10 blur-xl transition-transform group-hover:scale-125 duration-700" />
         
-        <div className="relative z-10 flex flex-col h-full justify-between min-h-[140px]">
-          <div className="flex items-center gap-2 mb-6">
+        <div className="relative z-10 flex flex-col h-full justify-center items-center text-center min-h-[140px] py-4">
+          <div className="flex items-center gap-2 mb-3">
             <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md shadow-sm">
               <Wallet className="h-4 w-4 text-white" />
             </div>
             <span className="text-sm font-medium text-primary-foreground/90">Saldo Disponível</span>
           </div>
           
-          <div>
-            <p className="text-3xl lg:text-4xl font-extrabold tracking-tight tabular-nums mb-2 drop-shadow-sm">
+          <div className="flex flex-col items-center">
+            <p className="text-4xl lg:text-5xl font-extrabold tracking-tight tabular-nums drop-shadow-sm">
               {formatCurrencyBRL(availableTotal)}
             </p>
             {carryoverLabel && (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 backdrop-blur-sm text-xs font-medium text-white/95 shadow-sm border border-white/10">
+              <div className="mt-3 inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 backdrop-blur-sm text-xs font-medium text-white/95 shadow-sm border border-white/10">
                  {carryoverBalance > 0 ? <TrendingUp className="h-3 w-3 text-white" /> : <TrendingDown className="h-3 w-3 text-white" />}
                  {carryoverLabel}
               </div>
