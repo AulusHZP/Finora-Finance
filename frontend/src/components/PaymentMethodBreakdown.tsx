@@ -42,18 +42,18 @@ export function PaymentMethodBreakdown({ transactions }: { transactions: Transac
     .sort((a, b) => b.amount - a.amount);
 
   return (
-    <div className="bg-card rounded-2xl border border-border/50 p-5 lg:p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4 pb-2 border-b border-border/30">
-        <h3 className="text-base font-bold text-foreground">Métodos de Pagamento</h3>
+    <div className="bg-card rounded-3xl border border-border/50 p-6 shadow-sm ring-1 ring-black/5 dark:ring-white/5 flex-1">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-semibold text-foreground">Métodos de Pagamento</h2>
       </div>
 
       {paymentMethods.length === 0 && (
-        <p className="text-[13px] text-muted-foreground mb-3 p-4 bg-muted/30 rounded-xl text-center border border-border/40">Sem despesas para detalhar.</p>
+        <p className="text-[13px] text-muted-foreground mb-3 p-4 bg-muted/30 rounded-2xl text-center border border-border/40">Sem despesas para detalhar.</p>
       )}
 
       {paymentMethods.length > 0 && (
-        <>
-          <div className="flex gap-1 h-3 rounded-full overflow-hidden mb-5">
+        <div className="flex flex-col h-full">
+          <div className="flex gap-1 h-3 rounded-full overflow-hidden mb-6 shrink-0">
             {paymentMethods.map((m) => (
               <div
                 key={m.name}
@@ -64,21 +64,21 @@ export function PaymentMethodBreakdown({ transactions }: { transactions: Transac
             ))}
           </div>
 
-          <div className="space-y-3">
+          <div className="flex flex-col gap-1 flex-1">
             {paymentMethods.map((m) => (
-              <div key={m.name} className="flex items-center justify-between text-sm group hover:bg-muted/30 p-2 -mx-2 rounded-lg transition-colors">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-base h-7 w-7 bg-muted/50 rounded-full flex items-center justify-center group-hover:bg-muted transition-colors">{m.icon}</span>
+              <div key={m.name} className="flex items-center justify-between text-sm group hover:bg-muted/50 p-2.5 -mx-2.5 rounded-2xl transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="text-base h-8 w-8 bg-muted rounded-xl flex items-center justify-center group-hover:bg-muted/80 transition-colors shrink-0">{m.icon}</span>
                   <span className="text-foreground font-medium group-hover:text-primary transition-colors">{methodLabelMap[m.name] || m.name}</span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                   <span className="text-foreground font-semibold">{formatCurrencyBRL(m.amount)}</span>
-                  <span className="text-muted-foreground font-medium text-xs bg-muted px-2 py-0.5 rounded-full">{m.pct}%</span>
+                  <span className="text-muted-foreground font-medium text-xs bg-muted px-2 py-0.5 rounded-md">{m.pct}%</span>
                 </div>
               </div>
             ))}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

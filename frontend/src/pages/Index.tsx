@@ -94,11 +94,11 @@ const Index = () => {
         </div>
 
         {/* ROW 3: Bottom Section Split (Table + Insights/Payments) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
           {/* Table */}
-          <div className="lg:col-span-8">
-            <div className="bg-card rounded-3xl border border-border/50 p-6 shadow-sm flex flex-col h-full max-h-[600px] ring-1 ring-black/5 dark:ring-white/5">
-              <div className="flex items-center justify-between mb-6">
+          <div className="lg:col-span-8 sticky top-6">
+            <div className="bg-card rounded-3xl border border-border/50 p-6 shadow-sm flex flex-col max-h-[650px] ring-1 ring-black/5 dark:ring-white/5">
+              <div className="flex items-center justify-between mb-6 shrink-0">
                 <h2 className="text-lg font-semibold text-foreground">Últimas Transações</h2>
                 <Link to="/transactions" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
                   Ver todas <ChevronRight className="h-4 w-4" />
@@ -117,10 +117,7 @@ const Index = () => {
 
           {/* Right Column: Insights & Payments */}
           <div className="lg:col-span-4 flex flex-col gap-5 lg:gap-6">
-            <div className="space-y-4">
-              <DashboardInsights transactions={transactions} goals={goals} />
-            </div>
-            {/* Keeping PaymentMethodBreakdown outside of the prompt scope but aligned */}
+            <DashboardInsights transactions={transactions} goals={goals} />
             <PaymentMethodBreakdown transactions={transactions} />
           </div>
         </div>
