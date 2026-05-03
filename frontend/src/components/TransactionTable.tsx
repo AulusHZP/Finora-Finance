@@ -84,7 +84,7 @@ export function TransactionTable({
     if (search) items = items.filter((t) => t.title.toLowerCase().includes(search.toLowerCase()) || t.category.toLowerCase().includes(search.toLowerCase()));
     items.sort((a, b) => {
       const mul = sortAsc ? 1 : -1;
-      if (sortField === "date") return mul * new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (sortField === "date") return mul * (new Date(a.date).getTime() - new Date(b.date).getTime());
       if (sortField === "amount") return mul * (Math.abs(a.amount) - Math.abs(b.amount));
       return mul * a.title.localeCompare(b.title);
     });

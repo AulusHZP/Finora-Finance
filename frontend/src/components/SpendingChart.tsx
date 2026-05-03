@@ -50,7 +50,8 @@ const parseAmount = (value: unknown): number => {
 
 const getLatestTransactionDate = (transactions: Transaction[]): Date => {
   if (transactions.length === 0) {
-    return new Date();
+    const now = new Date();
+    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   }
 
   return transactions.reduce((latest, tx) => {
@@ -63,7 +64,7 @@ const buildWeeklyExpenseData = (transactions: Transaction[]) => {
   const referenceDate = getLatestTransactionDate(transactions);
   const days: Date[] = [];
   for (let i = 6; i >= 0; i -= 1) {
-    days.push(new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate() - i));
+    days.push(new Date(Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), referenceDate.getUTCDate() - i)));
   }
 
   const expenseMap = new Map<string, number>();
@@ -80,7 +81,7 @@ const buildWeeklyExpenseData = (transactions: Transaction[]) => {
   return days.map((day) => {
     const key = dayKey(day);
     return {
-      name: day.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", ""),
+      name: day.toLocaleDateString("pt-BR", { weekday: "short", timeZone: "UTC" }).replace(".", ""),
       amount: expenseMap.get(key) || 0,
     };
   });
@@ -90,7 +91,7 @@ const buildMonthlyExpenseData = (transactions: Transaction[]) => {
   const referenceDate = getLatestTransactionDate(transactions);
   const months: Date[] = [];
   for (let i = 5; i >= 0; i -= 1) {
-    months.push(new Date(referenceDate.getFullYear(), referenceDate.getMonth() - i, 1));
+    months.push(new Date(Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth() - i, 1)));
   }
 
   const expenseMap = new Map<string, number>();
@@ -107,7 +108,7 @@ const buildMonthlyExpenseData = (transactions: Transaction[]) => {
   return months.map((month) => {
     const key = monthKey(month);
     return {
-      name: month.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
+      name: month.toLocaleDateString("pt-BR", { month: "short", timeZone: "UTC" }).replace(".", ""),
       amount: expenseMap.get(key) || 0,
     };
   });
