@@ -119,19 +119,23 @@ export function DashboardInsights({ transactions, goals }: { transactions: Trans
   const displayInsights = insights.slice(0, 3);
 
   return (
-    <div className="bg-card rounded-lg border border-border p-4">
-      <h3 className="text-sm font-semibold text-foreground mb-3">Insights</h3>
+    <div className="bg-card rounded-2xl border border-border/50 p-5 lg:p-6 shadow-sm h-full flex flex-col">
+      <div className="flex items-center justify-between mb-4 pb-2 border-b border-border/30">
+        <h3 className="text-base font-bold text-foreground">Insights Financeiros</h3>
+      </div>
 
-      <div className="space-y-2.5">
+      <div className="space-y-3 flex-1">
         {displayInsights.map((insight) => {
           const IconComponent = insight.icon;
           return (
-            <div key={insight.id} className={`p-3 rounded-lg ${insight.bgColor} border border-border/50`}>
-              <div className="flex items-start gap-2.5">
-                <IconComponent className={`h-4 w-4 ${insight.color} flex-shrink-0 mt-0.5`} />
+            <div key={insight.id} className="group p-4 bg-background border border-border/50 rounded-xl hover:border-primary/30 transition-all duration-300 hover:shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className={`h-8 w-8 rounded-full ${insight.bgColor} flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110`}>
+                  <IconComponent className={`h-4 w-4 ${insight.color}`} />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground mb-0.5">{insight.title}</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{insight.message}</p>
+                  <p className="text-sm font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">{insight.title}</p>
+                  <p className="text-[13px] text-muted-foreground leading-relaxed">{insight.message}</p>
                 </div>
               </div>
             </div>

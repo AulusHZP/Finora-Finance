@@ -122,7 +122,7 @@ export function SpendingChart({ transactions }: { transactions: Transaction[] })
   const total = data.reduce((sum, item) => sum + item.amount, 0);
 
   return (
-    <div className="glass-card p-5 h-full">
+    <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Resumo de Gastos</h3>
