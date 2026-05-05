@@ -192,7 +192,7 @@ export function SpendingChart({ transactions }: { transactions: Transaction[] })
         </div>
       </div>
       <div className="flex-1 w-full min-h-[250px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={260}>
           <BarChart data={data} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground))" opacity={0.15} />
             <XAxis 
