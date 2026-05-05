@@ -48,20 +48,13 @@ const parseAmount = (value: unknown): number => {
   return 0;
 };
 
-const getLatestTransactionDate = (transactions: Transaction[]): Date => {
-  if (transactions.length === 0) {
-    const now = new Date();
-    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-  }
-
-  return transactions.reduce((latest, tx) => {
-    const txDate = parseTxDate(tx.date);
-    return txDate > latest ? txDate : latest;
-  }, parseTxDate(transactions[0].date));
+const getCurrentReferenceDate = (): Date => {
+  const now = new Date();
+  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 };
 
 const buildWeeklyExpenseData = (transactions: Transaction[]) => {
-  const referenceDate = getLatestTransactionDate(transactions);
+  const referenceDate = getCurrentReferenceDate();
   
   // Encontra o domingo da semana atual (0 = Domingo)
   const currentDayOfWeek = referenceDate.getUTCDay(); 
@@ -101,7 +94,7 @@ const buildWeeklyExpenseData = (transactions: Transaction[]) => {
 };
 
 const buildMonthlyExpenseData = (transactions: Transaction[]) => {
-  const referenceDate = getLatestTransactionDate(transactions);
+  const referenceDate = getCurrentReferenceDate();
   const months: Date[] = [];
   for (let i = 5; i >= 0; i -= 1) {
     months.push(new Date(Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth() - i, 1)));
