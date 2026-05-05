@@ -1,4 +1,4 @@
-import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
+import { BarChart, Bar, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import { useMemo, useState } from "react";
 import { formatCurrencyBRL, parseCurrencyInputBRL } from "@/lib/currency";
 import type { Transaction } from "@/services/api";
@@ -120,6 +120,7 @@ export function SpendingChart({ transactions }: { transactions: Transaction[] })
   const monthlyData = useMemo(() => buildMonthlyExpenseData(transactions), [transactions]);
   const data = period === "weekly" ? weeklyData : monthlyData;
   const total = data.reduce((sum, item) => sum + item.amount, 0);
+  const maxAmount = Math.max(...data.map(d => d.amount));
 
   return (
     <div className="bg-card rounded-3xl border border-border/50 p-6 shadow-sm flex flex-col h-full ring-1 ring-black/5 dark:ring-white/5 group transition-all hover:shadow-md">
@@ -151,13 +152,8 @@ export function SpendingChart({ transactions }: { transactions: Transaction[] })
       </div>
       <div className="flex-1 w-full min-h-[250px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
+          <BarChart data={data} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground))" opacity={0.15} />
             <XAxis 
               dataKey="name" 
               axisLine={false} 
@@ -172,21 +168,27 @@ export function SpendingChart({ transactions }: { transactions: Transaction[] })
               tickFormatter={(v) => `R$${v}`}
             />
             <Tooltip 
-              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+              cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
+              contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--card))', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
               itemStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
-              labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+              labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
               formatter={(value: number) => [formatCurrencyBRL(value), "Gasto"]}
             />
-            <Area 
-              type="monotone" 
+            <Bar 
               dataKey="amount" 
-              stroke="#3b82f6" 
-              strokeWidth={3}
-              fillOpacity={1} 
-              fill="url(#colorAmount)" 
-              activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }}
-            />
-          </AreaChart>
+              radius={[6, 6, 6, 6]}
+              maxBarSize={45}
+              isAnimationActive={true}
+              animationDuration={800}
+            >
+              {data.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={entry.amount === maxAmount && entry.amount > 0 ? "#3b82f6" : "hsl(var(--primary) / 0.3)"} 
+                />
+              ))}
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       </div>
     </div>
