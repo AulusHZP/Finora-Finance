@@ -53,10 +53,14 @@ export const createTransaction = async (input: CreateTransactionInput) => {
       categoryId,
       method: input.method,
       date: input.date
-    }
+    },
+    include: { category: true }
   });
 
-  return transaction;
+  return {
+    ...transaction,
+    category: transaction.category?.name || ""
+  };
 };
 
 export const createTransactionsBulk = async (inputs: CreateTransactionInput[]) => {
@@ -83,10 +87,14 @@ export const deleteImportedTransactionsByUser = async (userId: string) => {
 export const getTransactionsByUserId = async (userId: string) => {
   const transactions = await prisma.transaction.findMany({
     where: { userId },
-    orderBy: { date: "desc" }
+    orderBy: { date: "desc" },
+    include: { category: true }
   });
 
-  return transactions;
+  return transactions.map(t => ({
+    ...t,
+    category: t.category?.name || "Outros"
+  }));
 };
 
 export const getTransactionById = async (transactionId: string, userId: string) => {
@@ -128,10 +136,14 @@ export const updateTransaction = async (transactionId: string, userId: string, d
     data: {
       ...rest,
       ...(categoryId !== undefined ? { categoryId } : {})
-    }
+    },
+    include: { category: true }
   });
 
-  return updated;
+  return {
+    ...updated,
+    category: updated.category?.name || ""
+  };
 };
 
 export const deleteTransaction = async (transactionId: string, userId: string) => {
