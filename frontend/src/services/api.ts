@@ -1,9 +1,16 @@
 import { API_BASE_URL } from "@/config/api";
 
+export interface Category {
+  id: string;
+  name: string;
+  subcategories: { id: string; name: string }[];
+}
+
 export interface Transaction {
   id: string;
   title: string;
   category: string;
+  categoryId?: string;
   amount: number;
   type: "income" | "expense";
   isFixed?: boolean;
@@ -20,6 +27,7 @@ export interface CreateTransactionPayload {
   type: "income" | "expense";
   isFixed?: boolean;
   category: string;
+  categoryId?: string;
   method: string;
   date: string;
   installmentCount?: number;
@@ -153,6 +161,26 @@ const invalidateDashboardData = () => {
   invalidateCache("dashboard");
   invalidateCache("transactions");
   invalidateCache("goals");
+};
+
+export const categorizeAPI = {
+  async getCategories(): Promise<any[]> {
+    const token = getAuthToken();
+    if (!token) throw new Error("Não autenticado");
+
+    const res = await fetch(`${API_BASE_URL}/transactions/categories`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch categories: ${res.statusText}`);
+    }
+
+    const data = await res.json();
+    return data.data;
+  }
 };
 
 export const transactionAPI = {

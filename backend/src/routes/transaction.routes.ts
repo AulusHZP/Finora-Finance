@@ -6,7 +6,8 @@ import {
   getTransactionsController,
   getTransactionController,
   updateTransactionController,
-  deleteTransactionController
+  deleteTransactionController,
+  getCategoriesController
 } from "../controllers/transaction.controller";
 import { authMiddleware } from "../middlewares/auth.middleware";
 
@@ -15,6 +16,7 @@ const transactionRoutes = Router();
 // Apply auth middleware to all transaction routes
 transactionRoutes.use(authMiddleware);
 
+transactionRoutes.get("/categories", getCategoriesController);
 transactionRoutes.post("/", createTransactionController);
 transactionRoutes.post("/import-csv", importTransactionsController);
 transactionRoutes.delete("/import-csv", clearImportedTransactionsController);

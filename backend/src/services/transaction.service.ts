@@ -1,5 +1,13 @@
 import { prisma } from "../config/prisma";
 
+export const getCategories = async () => {
+  const mainCategories = await prisma.category.findMany({
+    where: { parentId: null },
+    include: { subcategories: true }
+  });
+  return mainCategories;
+};
+
 type CreateTransactionInput = {
   userId: string;
   title: string;

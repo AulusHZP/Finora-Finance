@@ -246,6 +246,17 @@ export const getTransactionController = async (req: Request, res: Response, next
   }
 };
 
+import { getCategories } from "../services/transaction.service";
+
+export const getCategoriesController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const categories = await getCategories();
+    return res.status(200).json(ok("Categories fetched successfully", categories));
+  } catch (error) {
+    return next(error);
+  }
+};
+
 export const updateTransactionController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.id;

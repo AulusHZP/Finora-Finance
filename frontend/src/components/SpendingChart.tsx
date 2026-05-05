@@ -254,7 +254,7 @@ export function SpendingChart({ transactions }: { transactions: Transaction[] })
               {selectedDay.transactions.map((tx: any, i: number) => (
                 <div key={i} className="flex justify-between items-center bg-muted/40 p-3 rounded-xl hover:bg-muted/60 transition-colors">
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-foreground tracking-tight">{tx.description || tx.category || "Sem descrição"}</span>
+                    <span className="text-sm font-medium text-foreground tracking-tight">{tx.title || tx.category || "Sem título"}</span>
                     <span className="text-[11px] text-muted-foreground uppercase pt-0.5">{tx.category}</span>
                   </div>
                   <span className="text-sm font-bold text-red-500/90 whitespace-nowrap">

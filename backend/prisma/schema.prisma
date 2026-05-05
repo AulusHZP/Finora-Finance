@@ -26,7 +26,8 @@ model Transaction {
   amount    Float
   type      String   // "income" or "expense"
   isFixed   Boolean  @default(false)
-  category  String
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
   method    String
   date      DateTime
   createdAt DateTime @default(now())
@@ -34,6 +35,19 @@ model Transaction {
 
   @@index([userId])
   @@index([userId, date])
+}
+
+model Category {
+  id          String        @id @default(uuid())
+  name        String
+  parentId    String?
+  parent      Category?     @relation("SubCategories", fields: [parentId], references: [id])
+  subcategories Category[]  @relation("SubCategories")
+  transactions Transaction[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([name, parentId])
 }
 
 model Goal {
