@@ -41,6 +41,7 @@ export function TransactionTable({
   onRowClick,
   onlyCsvImported = false,
   transactionsData,
+  categoryFilter,
 }: {
   limit?: number;
   showSearch?: boolean;
@@ -48,6 +49,7 @@ export function TransactionTable({
   onRowClick?: (transaction: Transaction) => void;
   onlyCsvImported?: boolean;
   transactionsData?: Transaction[];
+  categoryFilter?: string;
 }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -81,6 +83,7 @@ export function TransactionTable({
     let items = [...source];
     if (onlyCsvImported) items = items.filter((t) => t.method === "Importação CSV");
     if (filterType !== "all") items = items.filter((t) => t.type === filterType);
+    if (categoryFilter) items = items.filter((t) => t.category === categoryFilter);
     if (search) items = items.filter((t) => t.title.toLowerCase().includes(search.toLowerCase()) || t.category.toLowerCase().includes(search.toLowerCase()));
     items.sort((a, b) => {
       const mul = sortAsc ? 1 : -1;
@@ -89,7 +92,7 @@ export function TransactionTable({
       return mul * a.title.localeCompare(b.title);
     });
     return limit ? items.slice(0, limit) : items;
-  }, [transactions, transactionsData, search, sortField, sortAsc, filterType, limit, onlyCsvImported]);
+  }, [transactions, transactionsData, search, sortField, sortAsc, filterType, limit, onlyCsvImported, categoryFilter]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortAsc(!sortAsc);

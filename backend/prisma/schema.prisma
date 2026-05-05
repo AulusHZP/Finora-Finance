@@ -40,6 +40,8 @@ model Transaction {
 model Category {
   id          String        @id @default(uuid())
   name        String
+  type        String        @default("expense") // "income" or "expense"
+  emoji       String        @default("💰")
   parentId    String?
   parent      Category?     @relation("SubCategories", fields: [parentId], references: [id])
   subcategories Category[]  @relation("SubCategories")

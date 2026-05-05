@@ -3,7 +3,9 @@ import { API_BASE_URL } from "@/config/api";
 export interface Category {
   id: string;
   name: string;
-  subcategories: { id: string; name: string }[];
+  type: "income" | "expense";
+  emoji: string;
+  subcategories: { id: string; name: string; emoji: string }[];
 }
 
 export interface Transaction {

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { TransactionTable } from "@/components/TransactionTable";
 import { AddTransactionSheet } from "@/components/AddTransactionSheet";
+import { CategoryFilter } from "@/components/CategoryFilter";
 import { transactionAPI, type Transaction } from "@/services/api";
 import { parseCurrencyInputBRL } from "@/lib/currency";
 
@@ -20,6 +21,7 @@ const Transactions = () => {
   const [deleting, setDeleting] = useState(false);
   const [clearingCsv, setClearingCsv] = useState(false);
   const [onlyCsvImported, setOnlyCsvImported] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [transactionList, setTransactionList] = useState<Transaction[]>([]);
@@ -169,6 +171,7 @@ const Transactions = () => {
           <p className="text-sm text-muted-foreground mt-0.5">Visualize e gerencie toda a atividade</p>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+          <CategoryFilter value={categoryFilter} onChange={setCategoryFilter} />
           <button
             onClick={() => setOnlyCsvImported((prev) => !prev)}
             className={`h-11 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-default ${
@@ -200,6 +203,7 @@ const Transactions = () => {
         <TransactionTable
           onViewDetails={openDetails}
           onlyCsvImported={onlyCsvImported}
+          categoryFilter={categoryFilter}
           transactionsData={transactionList}
         />
       </div>
