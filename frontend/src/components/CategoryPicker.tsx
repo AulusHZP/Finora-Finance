@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { ChevronDown, Check } from "lucide-react";
 import { categorizeAPI, type Category } from "@/services/api";
 
 interface Props {
@@ -26,9 +27,21 @@ const fetchCategories = (): Promise<Category[]> => {
 
 export function CategoryPicker({ value, onChange, type }: Props) {
   const [categories, setCategories] = useState<Category[]>(cachedCategories ?? []);
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchCategories().then(setCategories);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const filtered = useMemo(() => {
@@ -36,24 +49,62 @@ export function CategoryPicker({ value, onChange, type }: Props) {
     return categories.filter((c) => (c as any).type === type);
   }, [categories, type]);
 
+  const handleSelect = (categoryName: string) => {
+    onChange(categoryName);
+    setIsOpen(false);
+  };
+
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full h-10 px-3 bg-muted rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default appearance-none cursor-pointer"
-      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1em' }}
-    >
-      <option value="" disabled>Selecione uma categoria...</option>
-      {filtered.map((cat) => (
-        <optgroup key={cat.id} label={`${(cat as any).emoji || "📁"} ${cat.name}`}>
-          <option value={cat.name}>{cat.name} (Geral)</option>
-          {cat.subcategories?.map((sub) => (
-            <option key={sub.id} value={sub.name}>
-              ↳ {(sub as any).emoji || "•"} {sub.name}
-            </option>
-          ))}
-        </optgroup>
-      ))}
-    </select>
+    <div className="relative w-full" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full h-10 px-3 bg-muted rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default flex items-center justify-between border border-transparent"
+      >
+        <span className={value ? "text-foreground truncate" : "text-muted-foreground truncate"}>
+          {value || "Selecione uma categoria..."}
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1.5 bg-card border border-border rounded-xl shadow-lg max-h-64 overflow-y-auto py-1.5 scrollbar-thin">
+          {filtered.length === 0 ? (
+            <div className="px-3 py-3 text-sm text-muted-foreground text-center">Nenhuma categoria encontrada</div>
+          ) : (
+            filtered.map((cat) => (
+              <div key={cat.id} className="mb-1 last:mb-0">
+                {/* Main Category */}
+                <button
+                  type="button"
+                  onClick={() => handleSelect(cat.name)}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-muted ${
+                    value === cat.name ? "text-primary font-semibold bg-primary/5" : "text-foreground font-medium"
+                  }`}
+                >
+                  <span className="truncate pr-2">{cat.name}</span>
+                  {value === cat.name && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                </button>
+                
+                {/* Subcategories */}
+                {cat.subcategories?.map((sub) => (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    onClick={() => handleSelect(sub.name)}
+                    className={`w-full flex items-center justify-between pl-6 pr-3 py-1.5 text-sm transition-colors hover:bg-muted ${
+                      value === sub.name ? "text-primary font-medium bg-primary/5" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span className="truncate pr-2">{sub.name}</span>
+                    {value === sub.name && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                  </button>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 }
