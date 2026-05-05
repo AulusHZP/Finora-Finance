@@ -1,18 +1,20 @@
 import { prisma } from "../config/prisma";
 
-type DashboardTransaction = {
+type RawTransaction = {
   id: string;
   userId: string;
   title: string;
   amount: number;
   type: string;
   isFixed: boolean;
-  category: string;
+  category: { id: string; name: string; parentId: string | null; createdAt: Date; updatedAt: Date } | null;
   method: string;
   date: Date;
   createdAt: Date;
   updatedAt: Date;
 };
+
+type DashboardTransaction = Omit<RawTransaction, 'category'> & { category: string };
 
 type DashboardGoal = {
   id: string;
@@ -161,13 +163,15 @@ export const getDashboardByUserId = async (userId: string): Promise<DashboardDat
         amount: true,
         type: true,
         isFixed: true,
-        category: true,
+        category: { select: { id: true, name: true, parentId: true, createdAt: true, updatedAt: true } },
         method: true,
         date: true,
         createdAt: true,
         updatedAt: true
       }
-    }),
+    }).then((rows) =>
+      rows.map((t) => ({ ...t, category: t.category?.name ?? "" }))
+    ),
     prisma.goal.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },

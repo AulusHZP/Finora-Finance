@@ -1,5 +1,14 @@
 import { prisma } from "../config/prisma";
 
+/** Resolves a category name to its ID, creating it if it doesn't exist. */
+const resolveCategoryId = async (name: string): Promise<string | null> => {
+  if (!name) return null;
+  const existing = await prisma.category.findFirst({ where: { name, parentId: null } });
+  if (existing) return existing.id;
+  const created = await prisma.category.create({ data: { name } });
+  return created.id;
+};
+
 export const getCategories = async () => {
   const mainCategories = await prisma.category.findMany({
     where: { parentId: null },
@@ -30,6 +39,8 @@ type UpdateTransactionInput = {
 };
 
 export const createTransaction = async (input: CreateTransactionInput) => {
+  const categoryId = input.category ? await resolveCategoryId(input.category) : null;
+
   const transaction = await prisma.transaction.create({
     data: {
       userId: input.userId,
@@ -37,7 +48,7 @@ export const createTransaction = async (input: CreateTransactionInput) => {
       amount: input.amount,
       type: input.type,
       isFixed: input.isFixed ?? false,
-      category: input.category,
+      categoryId,
       method: input.method,
       date: input.date
     }
@@ -51,20 +62,9 @@ export const createTransactionsBulk = async (inputs: CreateTransactionInput[]) =
     return { count: 0 };
   }
 
-  const result = await prisma.transaction.createMany({
-    data: inputs.map((input) => ({
-      userId: input.userId,
-      title: input.title,
-      amount: input.amount,
-      type: input.type,
-      isFixed: input.isFixed ?? false,
-      category: input.category,
-      method: input.method,
-      date: input.date
-    }))
-  });
-
-  return result;
+  // createMany doesn't support nested relations — create one by one
+  const results = await Promise.all(inputs.map((input) => createTransaction(input)));
+  return { count: results.length };
 };
 
 export const deleteImportedTransactionsByUser = async (userId: string) => {
@@ -118,9 +118,15 @@ export const updateTransaction = async (transactionId: string, userId: string, d
     throw err;
   }
 
+  const { category, ...rest } = data;
+  const categoryId = category !== undefined ? await resolveCategoryId(category) : undefined;
+
   const updated = await prisma.transaction.update({
     where: { id: transactionId },
-    data
+    data: {
+      ...rest,
+      ...(categoryId !== undefined ? { categoryId } : {})
+    }
   });
 
   return updated;
