@@ -1,10 +1,12 @@
 import { prisma } from "../config/prisma";
 
-/** Resolves a category name to its ID, creating it if it doesn't exist. */
+/** Resolves a category name to its ID, searching parents and subcategories. */
 const resolveCategoryId = async (name: string): Promise<string | null> => {
   if (!name) return null;
-  const existing = await prisma.category.findFirst({ where: { name, parentId: null } });
+  // Try main category first, then any subcategory
+  const existing = await prisma.category.findFirst({ where: { name } });
   if (existing) return existing.id;
+  // Create as a top-level category if not found
   const created = await prisma.category.create({ data: { name } });
   return created.id;
 };

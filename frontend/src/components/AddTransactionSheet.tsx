@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { transactionAPI } from "@/services/api";
 import { parseCurrencyInputBRL } from "@/lib/currency";
+import { CategoryPicker } from "@/components/CategoryPicker";
 
 interface AddTransactionSheetProps {
   open: boolean;
@@ -9,7 +10,6 @@ interface AddTransactionSheetProps {
   onTransactionAdded?: () => void;
 }
 
-const categories = ["Alimentação", "Transporte", "Compras", "Contas", "Salário", "Freelance", "Entretenimento", "Saúde"];
 const methods = ["Crédito", "Débito", "Pix", "Dinheiro", "Transferência"];
 
 export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTransactionSheetProps) {
@@ -134,11 +134,7 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Categoria</label>
-            <div className="flex flex-wrap gap-1.5">
-              {categories.map((cat) => (
-                <button key={cat} onClick={() => setCategory(cat)} className={`px-3 py-1 rounded-full text-xs font-medium transition-default press-scale ${category === cat ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}>{cat}</button>
-              ))}
-            </div>
+            <CategoryPicker value={category} onChange={setCategory} type={type} />
           </div>
 
           <div>

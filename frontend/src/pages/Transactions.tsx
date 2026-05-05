@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { TransactionTable } from "@/components/TransactionTable";
 import { AddTransactionSheet } from "@/components/AddTransactionSheet";
 import { CategoryFilter } from "@/components/CategoryFilter";
+import { CategoryPicker } from "@/components/CategoryPicker";
 import { transactionAPI, type Transaction } from "@/services/api";
 import { parseCurrencyInputBRL } from "@/lib/currency";
 
@@ -244,15 +245,14 @@ const Transactions = () => {
                 <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" className="w-full h-10 px-3 bg-muted rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Categoria</label>
-                  <input value={category} onChange={(e) => setCategory(e.target.value)} className="w-full h-10 px-3 bg-muted rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Método</label>
-                  <input value={method} onChange={(e) => setMethod(e.target.value)} className="w-full h-10 px-3 bg-muted rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-                </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Categoria</label>
+                <CategoryPicker value={category} onChange={setCategory} type={type} />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Método</label>
+                <input value={method} onChange={(e) => setMethod(e.target.value)} className="w-full h-10 px-3 bg-muted rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
               </div>
 
               <div>
