@@ -8,30 +8,19 @@ interface Props {
   type?: "income" | "expense";
 }
 
-let cachedCategories: Category[] | null = null;
-let cachePromise: Promise<Category[]> | null = null;
-
-const fetchCategories = (): Promise<Category[]> => {
-  if (cachedCategories) return Promise.resolve(cachedCategories);
-  if (cachePromise) return cachePromise;
-  cachePromise = categorizeAPI.getCategories().then((data) => {
-    cachedCategories = data ?? [];
-    cachePromise = null;
-    return cachedCategories;
-  }).catch(() => {
-    cachePromise = null;
-    return [];
-  });
-  return cachePromise;
-};
-
 export function CategoryPicker({ value, onChange, type }: Props) {
-  const [categories, setCategories] = useState<Category[]>(cachedCategories ?? []);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchCategories().then(setCategories);
+    let mounted = true;
+    categorizeAPI.getCategories()
+      .then((data) => {
+        if (mounted) setCategories(data ?? []);
+      })
+      .catch((err) => console.error("Failed to fetch categories:", err));
+    return () => { mounted = false; };
   }, []);
 
   useEffect(() => {
