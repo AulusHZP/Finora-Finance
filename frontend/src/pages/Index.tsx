@@ -66,7 +66,7 @@ const Index = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 lg:mb-8 gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-extrabold text-foreground tracking-tight">Visão Geral</h1>
-          <p className="text-sm text-muted-foreground mt-1">Acompanhe seu progresso financeiro deste mês.</p>
+          <p className="text-sm text-muted-foreground mt-1">Acompanhe seu progresso financeiro dos últimos 30 dias.</p>
         </div>
         <button
           onClick={() => setSheetOpen(true)}

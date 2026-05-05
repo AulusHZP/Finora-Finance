@@ -169,7 +169,7 @@ export function SpendingChart({ transactions }: { transactions: Transaction[] })
         <div>
           <h2 className="text-lg font-semibold text-foreground">Resumo de Gastos</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Evolução do seu saldo - {period === "weekly" ? "esta semana" : "este mês"}
+            Evolução do seu saldo - {period === "weekly" ? "esta semana" : "últimos 30 dias"}
           </p>
         </div>
         <div className="flex gap-1 bg-muted rounded-xl p-1">

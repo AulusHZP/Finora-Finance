@@ -53,18 +53,16 @@ const FIXED_COST_REGEX = /(aluguel|moradia|energia|água|agua|internet|assinatur
 const normalizeAmount = (amount: number) => Math.abs(Number(amount) || 0);
 
 /**
- * Returns start and end of the current month in UTC-agnostic local boundaries.
- * We store dates in UTC but the user operates in local time, so we construct
- * the month boundaries using the server's perspective of "now".
- * To avoid timezone-shift issues we use UTC month math (dates are saved at
- * midnight UTC when the frontend sends "YYYY-MM-DD" as a full ISO string).
+ * Returns a rolling 30-day window ending today (UTC).
+ * Using a rolling window instead of a strict calendar month ensures that
+ * income from the previous month is always visible in the summary cards —
+ * especially important at the start of a new month when no income has been
+ * recorded yet for the current calendar month.
  */
 const getCurrentMonthBounds = () => {
   const now = new Date();
-  const year = now.getUTCFullYear();
-  const month = now.getUTCMonth();
-  const start = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
-  const end = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+  const start = new Date(end.getTime() - 29 * 24 * 60 * 60 * 1000); // last 30 days (today inclusive)
   return { start, end };
 };
 
