@@ -131,12 +131,12 @@ const buildDashboardValue = (transactions: DashboardTransaction[], goals: Dashbo
   const sortedTransactions = [...transactions].sort((left, right) => right.date.getTime() - left.date.getTime());
   const sortedGoals = [...goals].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 
-  // Dashboard list shows only CURRENT MONTH transactions
-  const currentMonthTransactions = sortedTransactions.filter((t) => t.date >= currentMonthStart);
-
   return {
-    transactions: currentMonthTransactions,
+    // Return ALL transactions so the chart / insights components have full historical data.
+    // The frontend components (TransactionTable, SpendingChart) apply their own date filtering.
+    transactions: sortedTransactions,
     goals: sortedGoals,
+    // Summary is still scoped to the current month (with carryover from previous months).
     summary: buildSummary(sortedTransactions, currentMonthStart),
     generatedAt: new Date().toISOString()
   };
