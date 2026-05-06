@@ -212,11 +212,11 @@ export function FloatingNav() {
 
           {/* Logo pill */}
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 dark:bg-white/10 backdrop-blur-xl border border-white/25 shadow-lg shadow-black/10 shrink-0">
-            <div className="h-6 w-6 rounded-md bg-blue-600 flex items-center justify-center shrink-0">
+            <div className="h-7 w-7 rounded-lg bg-white shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
               <img
                 src="/logo.png"
                 alt="Finora"
-                className="w-3.5 h-3.5 brightness-0 invert"
+                className="w-5 h-5 object-contain"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
@@ -277,11 +277,11 @@ export function FloatingNav() {
       <header className="fixed top-0 inset-x-0 z-50 flex sm:hidden items-center justify-between px-5 h-14 bg-white/15 dark:bg-slate-900/40 backdrop-blur-xl border-b border-white/20 shadow-sm">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-md bg-blue-600 flex items-center justify-center shrink-0">
+          <div className="h-7 w-7 rounded-lg bg-white shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
             <img
               src="/logo.png"
               alt="Finora"
-              className="w-3.5 h-3.5 brightness-0 invert"
+              className="w-5 h-5 object-contain"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = "none";
               }}
