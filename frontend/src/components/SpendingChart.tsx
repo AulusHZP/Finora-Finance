@@ -124,7 +124,8 @@ const buildWeeklyExpenseData = (transactions: Transaction[]) => {
 const buildMonthlyExpenseData = (transactions: Transaction[]) => {
   const referenceDate = getCurrentReferenceDate();
   const months: Date[] = [];
-  for (let i = 5; i >= 0; i -= 1) {
+  const currentMonthIndex = referenceDate.getUTCMonth();
+  for (let i = currentMonthIndex; i >= 0; i -= 1) {
     months.push(
       new Date(
         Date.UTC(
