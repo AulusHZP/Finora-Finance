@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { StatCards } from "@/components/StatCards";
-import { SpendingChart } from "@/components/SpendingChart";
+import { SpendingChart, type CategoryDataItem } from "@/components/SpendingChart";
 import { TransactionTable } from "@/components/TransactionTable";
 import { DashboardGoalsWidget } from "@/components/DashboardGoalsWidget";
 import { DashboardInsights } from "@/components/DashboardInsights";
@@ -11,7 +11,59 @@ import { AddTransactionSheet } from "@/components/AddTransactionSheet";
 import { ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatCurrencyBRL } from "@/lib/currency";
-import { dashboardAPI, type DashboardData } from "@/services/api";
+import { dashboardAPI, type DashboardData, type Transaction } from "@/services/api";
+
+// Paleta de azuis para colorir categorias automaticamente
+const CATEGORY_PALETTE = [
+  "#1d4ed8",
+  "#2563eb",
+  "#3b82f6",
+  "#60a5fa",
+  "#93c5fd",
+  "#bfdbfe",
+  "#1e3a8a",
+  "#1e40af",
+];
+
+const normalizeTransactionType = (type: unknown): "income" | "expense" => {
+  const v = String(type || "").trim().toLowerCase();
+  if (["income", "receita", "entrada", "credit", "credito", "crédito"].includes(v))
+    return "income";
+  return "expense";
+};
+
+const buildCategoryData = (transactions: Transaction[]): CategoryDataItem[] => {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-indexed
+
+  const map = new Map<string, number>();
+
+  transactions.forEach((tx) => {
+    if (normalizeTransactionType(tx.type) !== "expense") return;
+
+    // Filtra apenas o mês corrente
+    const datePart = tx.date.split("T")[0];
+    const [year, month] = datePart.split("-").map(Number);
+    if (year !== currentYear || month - 1 !== currentMonth) return;
+
+    const category = tx.category || "Outros";
+    const amount =
+      typeof tx.amount === "number"
+        ? Math.abs(tx.amount)
+        : Math.abs(Number(tx.amount) || 0);
+
+    map.set(category, (map.get(category) ?? 0) + amount);
+  });
+
+  return Array.from(map.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, value], i) => ({
+      name,
+      value,
+      color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length],
+    }));
+};
 
 const Index = () => {
   const navigate = useNavigate();
@@ -59,6 +111,7 @@ const Index = () => {
   const transactions = dashboard?.transactions ?? [];
   const goals = dashboard?.goals ?? [];
   const availableTotal = dashboard?.summary.availableBalance ?? 0;
+  const categoryData = useMemo(() => buildCategoryData(transactions), [transactions]);
 
   return (
     <AppLayout>
@@ -86,7 +139,7 @@ const Index = () => {
         {/* ROW 2: Chart & Goals */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
           <div className="lg:col-span-8">
-            <SpendingChart transactions={transactions} />
+            <SpendingChart transactions={transactions} categoryData={categoryData} />
           </div>
           <div className="lg:col-span-4">
             <DashboardGoalsWidget goals={goals} />
