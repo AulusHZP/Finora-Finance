@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { formatCurrencyBRL } from "@/lib/currency";
 import type { Transaction } from "@/services/api";
 
@@ -24,18 +24,25 @@ const methodLabelMap: Record<string, string> = {
 };
 
 export function PaymentMethodBreakdown({ transactions }: { transactions: Transaction[] }) {
-  const grouped = transactions
-    .filter((tx) => tx.type === "expense")
-    .reduce<Record<string, number>>((acc, tx) => {
-      const method = tx.method || "Outros";
-      acc[method] = (acc[method] || 0) + Math.abs(Number(tx.amount) || 0);
-      return acc;
-    }, {});
+  const [tab, setTab] = useState<'month' | 'total'>('month');
 
-  const total = Object.values(grouped).reduce((sum, amount) => sum + amount, 0);
   const paymentMethods = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
     const grouped = transactions
-      .filter((tx) => tx.type === "expense")
+      .filter((tx) => {
+        if (tx.type !== "expense") return false;
+        
+        if (tab === 'month') {
+          const datePart = tx.date.split("T")[0];
+          const [year, month] = datePart.split("-").map(Number);
+          if (year !== currentYear || month - 1 !== currentMonth) return false;
+        }
+        
+        return true;
+      })
       .reduce<Record<string, number>>((acc, tx) => {
         const method = tx.method || "Outros";
         acc[method] = (acc[method] || 0) + Math.abs(Number(tx.amount) || 0);
@@ -53,12 +60,26 @@ export function PaymentMethodBreakdown({ transactions }: { transactions: Transac
         icon: methodIcons[name] || HelpCircle,
       }))
       .sort((a, b) => b.amount - a.amount);
-  }, [transactions]);
+  }, [transactions, tab]);
 
   return (
     <div className="bg-card rounded-3xl border border-border/50 p-6 shadow-sm ring-1 ring-black/5 dark:ring-white/5 flex-1">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <h2 className="text-lg font-semibold text-foreground">Métodos de Pagamento</h2>
+        <div className="flex bg-muted p-1 rounded-lg w-fit shrink-0">
+          <button 
+            onClick={() => setTab('month')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all duration-200 ${tab === 'month' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            Mês Atual
+          </button>
+          <button 
+            onClick={() => setTab('total')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all duration-200 ${tab === 'total' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            Total
+          </button>
+        </div>
       </div>
 
       {paymentMethods.length === 0 && (
