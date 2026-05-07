@@ -592,7 +592,7 @@ export function SpendingChart({
                   dataKey="expense"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={30}
-                  fill="#880808"
+                  fill="#FF1717"
                   isAnimationActive
                   animationDuration={800}
                   onClick={(d) => setSelectedDay(d as any)}
