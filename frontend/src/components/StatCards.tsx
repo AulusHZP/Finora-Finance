@@ -25,33 +25,43 @@ export function StatCards({
   let incomeTotal = 0;
   let expenseTotal = 0;
   let fixedCostsTotal = 0;
+  let carryoverBalance = 0;
 
   transactions.forEach((tx) => {
-    // Filtrar apenas mês atual
     const datePart = tx.date.split("T")[0];
     const [year, month] = datePart.split("-").map(Number);
-    if (year !== currentYear || month - 1 !== currentMonth) return;
-
+    
     const amount = Math.abs(Number(tx.amount) || 0);
     const isExpense = tx.type === "expense";
     const isIncome = tx.type === "income";
 
-    if (isIncome) {
-      incomeTotal += amount;
-    }
+    // Mês atual
+    if (year === currentYear && month - 1 === currentMonth) {
+      if (isIncome) {
+        incomeTotal += amount;
+      }
 
-    if (isExpense) {
-      expenseTotal += amount;
+      if (isExpense) {
+        expenseTotal += amount;
 
-      const searchableText = `${tx.title} ${tx.category}`;
-      const isTaggedFixed = Boolean(tx.isFixed);
-      if (isTaggedFixed || FIXED_COST_REGEX.test(searchableText)) {
-        fixedCostsTotal += amount;
+        const searchableText = `${tx.title} ${tx.category}`;
+        const isTaggedFixed = Boolean(tx.isFixed);
+        if (isTaggedFixed || FIXED_COST_REGEX.test(searchableText)) {
+          fixedCostsTotal += amount;
+        }
+      }
+    } 
+    // Meses anteriores
+    else if (year < currentYear || (year === currentYear && month - 1 < currentMonth)) {
+      if (isIncome) {
+        carryoverBalance += amount;
+      }
+      if (isExpense) {
+        carryoverBalance -= amount;
       }
     }
   });
 
-  const carryoverBalance = summary?.carryoverBalance ?? 0;
   const availableTotal = carryoverBalance + incomeTotal - expenseTotal;
 
   const fixedCostsRatio = expenseTotal > 0 ? Math.round((fixedCostsTotal / expenseTotal) * 100) : 0;

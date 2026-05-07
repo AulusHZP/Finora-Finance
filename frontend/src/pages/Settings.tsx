@@ -187,15 +187,15 @@ const SettingsPage = () => {
           <div className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${
             message.includes("sucesso")
               ? "bg-green-500/10 border border-green-500/30"
-              : "bg-red-500/10 border border-red-500/30"
+              : "bg-destructive/10 border border-destructive/30"
           }`}>
             {message.includes("sucesso") ? (
               <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
             ) : (
-              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
             )}
             <p className={`text-sm ${
-              message.includes("sucesso") ? "text-green-600" : "text-red-600"
+              message.includes("sucesso") ? "text-green-600" : "text-destructive"
             }`}>
               {message}
             </p>

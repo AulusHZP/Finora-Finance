@@ -463,7 +463,7 @@ export function SpendingChart({
             Receita: <span className="text-emerald-500 font-bold">{formatCurrencyBRL(pData.income)}</span>
           </p>
           <p className="text-sm font-medium text-muted-foreground mb-2">
-            Despesa: <span className="text-rose-500 font-bold">{formatCurrencyBRL(pData.expense)}</span>
+            Despesa: <span className="text-destructive font-bold">{formatCurrencyBRL(pData.expense)}</span>
           </p>
           <p className="text-[10px] text-primary font-semibold uppercase tracking-wider">
             CLIQUE PARA DETALHES
@@ -592,7 +592,7 @@ export function SpendingChart({
                   dataKey="expense"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={30}
-                  fill="#f43f5e"
+                  fill="#880808"
                   isAnimationActive
                   animationDuration={800}
                   onClick={(d) => setSelectedDay(d as any)}
@@ -613,7 +613,7 @@ export function SpendingChart({
                   <span className="text-xs font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-1 rounded-md">
                     +{formatCurrencyBRL(selectedDay.income)}
                   </span>
-                  <span className="text-xs font-bold text-rose-600 bg-rose-100 dark:bg-rose-900/40 px-2 py-1 rounded-md">
+                  <span className="text-xs font-bold text-destructive bg-destructive/10 px-2 py-1 rounded-md">
                     -{formatCurrencyBRL(selectedDay.expense)}
                   </span>
                 </div>
@@ -634,7 +634,7 @@ export function SpendingChart({
                           {tx.category}
                         </span>
                       </div>
-                      <span className="text-sm font-bold text-red-500/90 whitespace-nowrap">
+                      <span className="text-sm font-bold text-destructive/90 whitespace-nowrap">
                         - {formatCurrencyBRL(Math.abs(parseAmount(tx.amount)))}
                       </span>
                     </div>
