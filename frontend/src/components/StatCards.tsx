@@ -1,6 +1,13 @@
-import { TrendingUp, TrendingDown, Wallet, PieChart } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, PieChart, AlertTriangle } from "lucide-react";
 import { formatCurrencyBRL } from "@/lib/currency";
 import type { Transaction, DashboardSummary } from "@/services/api";
+
+type AlertState = 'healthy' | 'critical';
+
+function getExpenseAlertState(despesas: number, receita: number): AlertState {
+  if (receita === 0) return 'healthy'; // If no income, consider healthy to not show false alarms
+  return despesas >= receita ? 'critical' : 'healthy';
+}
 
 const FIXED_COST_REGEX = /(aluguel|moradia|energia|água|agua|internet|assinatura|condomínio|condominio|conta|seguro|plano)/i;
 
@@ -11,48 +18,41 @@ export function StatCards({
   transactions: Transaction[];
   summary?: DashboardSummary;
 }) {
-  // If summary is provided by the backend, use it directly (accounts for carryover)
-  let incomeTotal: number;
-  let expenseTotal: number;
-  let fixedCostsTotal: number;
-  let availableTotal: number;
-  let carryoverBalance: number;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
 
-  if (summary) {
-    incomeTotal = summary.incomeTotal;
-    expenseTotal = summary.expenseTotal;
-    fixedCostsTotal = summary.fixedCostsTotal;
-    availableTotal = summary.availableBalance;
-    carryoverBalance = summary.carryoverBalance ?? 0;
-  } else {
-    // Fallback: compute from transactions locally (no carryover info)
-    incomeTotal = 0;
-    expenseTotal = 0;
-    fixedCostsTotal = 0;
-    carryoverBalance = 0;
+  let incomeTotal = 0;
+  let expenseTotal = 0;
+  let fixedCostsTotal = 0;
 
-    transactions.forEach((tx) => {
-      const amount = Math.abs(Number(tx.amount) || 0);
-      const isExpense = tx.type === "expense";
-      const isIncome = tx.type === "income";
+  transactions.forEach((tx) => {
+    // Filtrar apenas mês atual
+    const datePart = tx.date.split("T")[0];
+    const [year, month] = datePart.split("-").map(Number);
+    if (year !== currentYear || month - 1 !== currentMonth) return;
 
-      if (isIncome) {
-        incomeTotal += amount;
+    const amount = Math.abs(Number(tx.amount) || 0);
+    const isExpense = tx.type === "expense";
+    const isIncome = tx.type === "income";
+
+    if (isIncome) {
+      incomeTotal += amount;
+    }
+
+    if (isExpense) {
+      expenseTotal += amount;
+
+      const searchableText = `${tx.title} ${tx.category}`;
+      const isTaggedFixed = Boolean(tx.isFixed);
+      if (isTaggedFixed || FIXED_COST_REGEX.test(searchableText)) {
+        fixedCostsTotal += amount;
       }
+    }
+  });
 
-      if (isExpense) {
-        expenseTotal += amount;
-
-        const searchableText = `${tx.title} ${tx.category}`;
-        const isTaggedFixed = Boolean(tx.isFixed);
-        if (isTaggedFixed || FIXED_COST_REGEX.test(searchableText)) {
-          fixedCostsTotal += amount;
-        }
-      }
-    });
-
-    availableTotal = incomeTotal - expenseTotal;
-  }
+  const carryoverBalance = summary?.carryoverBalance ?? 0;
+  const availableTotal = carryoverBalance + incomeTotal - expenseTotal;
 
   const fixedCostsRatio = expenseTotal > 0 ? Math.round((fixedCostsTotal / expenseTotal) * 100) : 0;
   const expenseOfIncomeRatio = incomeTotal > 0 ? Math.round((expenseTotal / incomeTotal) * 100) : 0;
@@ -115,31 +115,47 @@ export function StatCards({
         </div>
 
         {/* DESPESAS WITH PROGRESS */}
-        <div className="group flex-1 rounded-2xl bg-card border border-border/50 p-4 lg:p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1">
-           <div className="flex justify-between items-start mb-2">
-             <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-destructive/15 flex items-center justify-center transition-colors group-hover:bg-destructive/20">
-                  <TrendingDown className="h-4 w-4 text-destructive" />
+        {(() => {
+          const alertState = getExpenseAlertState(expenseTotal, incomeTotal);
+          const isCritical = alertState === 'critical';
+          const showRatio = incomeTotal > 0;
+          
+          return (
+            <div className="group flex-1 rounded-2xl bg-card border border-border/50 p-4 lg:p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+              <div className="flex justify-between items-start mb-2 transition-colors duration-300">
+                <div className="flex items-center gap-2">
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-300 ${
+                    isCritical ? 'bg-destructive/15 group-hover:bg-destructive/20' : 'bg-blue-500/15 group-hover:bg-blue-500/20'
+                  }`}>
+                    {isCritical ? (
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4 text-blue-500" />
+                    )}
+                  </div>
+                  <span className="text-sm font-semibold text-muted-foreground">
+                    Despesas
+                  </span>
                 </div>
-                <span className="text-sm font-semibold text-muted-foreground">Despesas</span>
-             </div>
-             {incomeTotal > 0 && (
-               <span className="text-xs font-bold text-destructive bg-destructive/10 px-2 py-1 rounded-md">
-                 {expenseOfIncomeRatio}% <span className="hidden sm:inline font-medium">da receita</span>
-               </span>
-             )}
-           </div>
-           <p className="text-2xl font-bold tracking-tight tabular-nums text-foreground mt-1 mb-3">
-             {formatCurrencyBRL(expenseTotal)}
-           </p>
-           
-           <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-             <div 
-               className="bg-destructive h-full rounded-full transition-all duration-1000 ease-out" 
-               style={{ width: `${Math.min(expenseOfIncomeRatio, 100)}%` }}
-             />
-           </div>
-        </div>
+                {showRatio && isCritical && (
+                  <span className="text-xs font-bold text-destructive bg-destructive/10 px-2 py-1 rounded-md transition-all duration-300">
+                    {expenseOfIncomeRatio}% <span className="hidden sm:inline font-medium">da receita</span>
+                  </span>
+                )}
+              </div>
+              <p className={`text-2xl font-bold tracking-tight tabular-nums mt-1 mb-3 transition-colors duration-300 ${isCritical ? 'text-destructive' : 'text-foreground'}`}>
+                {formatCurrencyBRL(expenseTotal)}
+              </p>
+              
+              <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-1000 ease-out ${isCritical ? 'bg-destructive' : 'bg-blue-500'}`} 
+                  style={{ width: `${isCritical ? 100 : Math.min(expenseOfIncomeRatio, 100)}%` }}
+                />
+              </div>
+            </div>
+          );
+        })()}
 
       </div>
 
