@@ -13,6 +13,30 @@ import { Link, useNavigate } from "react-router-dom";
 import { formatCurrencyBRL } from "@/lib/currency";
 import { dashboardAPI, type DashboardData, type Transaction } from "@/services/api";
 
+const DashboardSkeleton = () => (
+  <div className="space-y-6 lg:space-y-8 pb-12 animate-pulse">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-5">
+      <div className="col-span-1 md:col-span-6 lg:col-span-5 h-[140px] bg-muted rounded-2xl" />
+      <div className="col-span-1 md:col-span-6 lg:col-span-4 flex flex-col gap-4 lg:gap-5">
+        <div className="flex-1 min-h-[80px] bg-muted rounded-2xl" />
+        <div className="flex-1 min-h-[80px] bg-muted rounded-2xl" />
+      </div>
+      <div className="col-span-1 md:col-span-12 lg:col-span-3 h-[140px] bg-muted rounded-2xl" />
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
+      <div className="lg:col-span-8 h-[300px] bg-muted rounded-3xl" />
+      <div className="lg:col-span-4 h-[300px] bg-muted rounded-3xl" />
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
+      <div className="lg:col-span-8 h-[400px] bg-muted rounded-3xl" />
+      <div className="lg:col-span-4 flex flex-col gap-5 lg:gap-6">
+        <div className="h-[250px] bg-muted rounded-3xl" />
+        <div className="h-[150px] bg-muted rounded-3xl" />
+      </div>
+    </div>
+  </div>
+);
+
 // Paleta de azuis para colorir categorias automaticamente
 const CATEGORY_PALETTE = [
   "#1d4ed8",
@@ -130,51 +154,54 @@ const Index = () => {
       </div>
 
       {loadError && <p className="text-xs text-destructive mb-4">{loadError}</p>}
-      {loading && <p className="text-xs text-muted-foreground mb-4">Carregando dados reais do dashboard...</p>}
+      
+      {loading ? (
+        <DashboardSkeleton />
+      ) : (
+        <div className="space-y-6 lg:space-y-8 pb-12">
+          {/* ROW 1: Highlight Cards */}
+          <StatCards transactions={transactions} summary={dashboard?.summary} />
 
-      <div className="space-y-6 lg:space-y-8 pb-12">
-        {/* ROW 1: Highlight Cards */}
-        <StatCards transactions={transactions} summary={dashboard?.summary} />
-
-        {/* ROW 2: Chart & Goals */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
-          <div className="lg:col-span-8">
-            <SpendingChart transactions={transactions} categoryData={categoryData} />
-          </div>
-          <div className="lg:col-span-4">
-            <DashboardGoalsWidget goals={goals} />
-          </div>
-        </div>
-
-        {/* ROW 3: Bottom Section Split (Table + Insights/Payments) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
-          {/* Table */}
-          <div className="lg:col-span-8 sticky top-6">
-            <div className="bg-card rounded-3xl border border-border/50 p-6 shadow-sm flex flex-col max-h-[650px] ring-1 ring-black/5 dark:ring-white/5">
-              <div className="flex items-center justify-between mb-6 shrink-0">
-                <h2 className="text-lg font-semibold text-foreground">Últimas Transações</h2>
-                <Link to="/transactions" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
-                  Ver todas <ChevronRight className="h-4 w-4" />
-                </Link>
-              </div>
-              <div className="flex-1 overflow-y-auto pr-2 [scrollbar-gutter:stable] -mr-2">
-                <TransactionTable
-                  limit={10}
-                  showSearch={false}
-                  transactionsData={transactions}
-                  onRowClick={() => navigate("/transactions")}
-                />
-              </div>
+          {/* ROW 2: Chart & Goals */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
+            <div className="lg:col-span-8">
+              <SpendingChart transactions={transactions} categoryData={categoryData} />
+            </div>
+            <div className="lg:col-span-4">
+              <DashboardGoalsWidget goals={goals} />
             </div>
           </div>
 
-          {/* Right Column: Insights & Payments */}
-          <div className="lg:col-span-4 flex flex-col gap-5 lg:gap-6">
-            <DashboardInsights transactions={transactions} goals={goals} />
-            <PaymentMethodBreakdown transactions={transactions} />
+          {/* ROW 3: Bottom Section Split (Table + Insights/Payments) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
+            {/* Table */}
+            <div className="lg:col-span-8 sticky top-6">
+              <div className="bg-card rounded-3xl border border-border/50 p-6 shadow-sm flex flex-col max-h-[650px] ring-1 ring-black/5 dark:ring-white/5">
+                <div className="flex items-center justify-between mb-6 shrink-0">
+                  <h2 className="text-lg font-semibold text-foreground">Últimas Transações</h2>
+                  <Link to="/transactions" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
+                    Ver todas <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </div>
+                <div className="flex-1 overflow-y-auto pr-2 [scrollbar-gutter:stable] -mr-2">
+                  <TransactionTable
+                    limit={10}
+                    showSearch={false}
+                    transactionsData={transactions}
+                    onRowClick={() => navigate("/transactions")}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Insights & Payments */}
+            <div className="lg:col-span-4 flex flex-col gap-5 lg:gap-6">
+              <DashboardInsights transactions={transactions} goals={goals} />
+              <PaymentMethodBreakdown transactions={transactions} />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <FAB onClick={() => setSheetOpen(true)} />
       <AddTransactionSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />

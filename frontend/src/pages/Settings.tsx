@@ -116,7 +116,7 @@ const SettingsPage = () => {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 bg-card border-2 border-border hover:border-primary/50 rounded-xl text-sm text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all font-medium"
               />
             </div>
             <div>
@@ -127,7 +127,7 @@ const SettingsPage = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 bg-card border-2 border-border hover:border-primary/50 rounded-xl text-sm text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all font-medium"
               />
             </div>
             <div>
@@ -137,7 +137,7 @@ const SettingsPage = () => {
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="w-full px-4 py-3 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-transparent transition-all appearance-none cursor-pointer"
+                className="w-full px-4 py-3 bg-card border-2 border-border hover:border-primary/50 rounded-xl text-sm text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all font-medium appearance-none cursor-pointer"
               >
                 <option>BRL (R$)</option>
               </select>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Goal } from "@/hooks/useGoals";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Target, BarChart3, CheckCircle2 } from "lucide-react";
 import { formatCurrencyBRL, parseCurrencyInputBRL } from "@/lib/currency";
 
 interface GoalDetailsProps {
@@ -16,8 +16,8 @@ export function GoalDetails({ goal, onAddContribution }: GoalDetailsProps) {
     return (
       <div className="h-full flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="text-4xl mb-2">📊</div>
-          <p className="text-muted-foreground text-sm">Selecione um objetivo para ver detalhes</p>
+          <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+          <p className="text-muted-foreground text-sm font-medium">Selecione um objetivo para ver detalhes</p>
         </div>
       </div>
     );
@@ -42,7 +42,9 @@ export function GoalDetails({ goal, onAddContribution }: GoalDetailsProps) {
     <div className="h-full flex flex-col p-4 sm:p-6 overflow-y-auto">
       {/* Header */}
       <div className="flex items-start gap-3 mb-6">
-        <span className="text-4xl">{goal.emoji}</span>
+        <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <Target className="w-8 h-8" />
+        </div>
         <div className="flex-1">
           <h2 className="text-2xl font-bold text-foreground">{goal.title}</h2>
           {goal.priority && (
@@ -132,8 +134,9 @@ export function GoalDetails({ goal, onAddContribution }: GoalDetailsProps) {
 
       {/* Info */}
       {remaining <= 0 && (
-        <div className="bg-success-light/20 border border-success/30 rounded-lg p-3 text-center">
-          <p className="text-sm font-semibold text-success">🎉 Objetivo Concluído!</p>
+        <div className="bg-success-light/20 border border-success/30 rounded-xl p-4 text-center flex flex-col items-center gap-2">
+          <CheckCircle2 className="w-8 h-8 text-success" />
+          <p className="text-sm font-bold text-success">Objetivo Concluído!</p>
         </div>
       )}
     </div>

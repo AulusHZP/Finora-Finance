@@ -57,6 +57,8 @@ export function TransactionTable({
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortAsc, setSortAsc] = useState(false);
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 20;
 
   useEffect(() => {
     if (transactionsData) {
@@ -91,8 +93,16 @@ export function TransactionTable({
       if (sortField === "amount") return mul * (Math.abs(a.amount) - Math.abs(b.amount));
       return mul * a.title.localeCompare(b.title);
     });
-    return limit ? items.slice(0, limit) : items;
-  }, [transactions, transactionsData, search, sortField, sortAsc, filterType, limit, onlyCsvImported, categoryFilter]);
+    return items;
+  }, [transactions, transactionsData, search, sortField, sortAsc, filterType, onlyCsvImported, categoryFilter]);
+
+  const paginated = useMemo(() => {
+    if (limit) return filtered.slice(0, limit);
+    const start = (page - 1) * itemsPerPage;
+    return filtered.slice(start, start + itemsPerPage);
+  }, [filtered, page, limit]);
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortAsc(!sortAsc);
@@ -146,7 +156,7 @@ export function TransactionTable({
       )}
 
       <div className="flex flex-col gap-1">
-        {filtered.map((tx) => {
+        {paginated.map((tx) => {
           const Icon = iconMap[tx.category] || DollarSign;
 
           // Define dynamic colors based on type or category
@@ -202,6 +212,30 @@ export function TransactionTable({
           <div className="py-8 text-center text-sm text-muted-foreground">Nenhuma transação encontrada.</div>
         )}
       </div>
+
+      {!limit && totalPages > 1 && (
+        <div className="flex items-center justify-between pt-6 mt-4 border-t border-border">
+          <p className="text-sm text-muted-foreground">
+            Mostrando <span className="font-medium text-foreground">{(page - 1) * itemsPerPage + 1}</span> a <span className="font-medium text-foreground">{Math.min(page * itemsPerPage, filtered.length)}</span> de <span className="font-medium text-foreground">{filtered.length}</span> transações
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 text-sm font-medium bg-muted text-muted-foreground rounded-lg disabled:opacity-50 hover:bg-muted/80 transition-default"
+            >
+              Anterior
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-4 py-2 text-sm font-medium bg-muted text-muted-foreground rounded-lg disabled:opacity-50 hover:bg-muted/80 transition-default"
+            >
+              Próxima
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

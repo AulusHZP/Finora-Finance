@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ChevronDown, Tag, X } from "lucide-react";
+import { ChevronDown, Tag, X, Folder, FolderOpen } from "lucide-react";
 import { categorizeAPI, type Category } from "@/services/api";
 
 interface Props {
@@ -79,7 +79,7 @@ export function CategoryFilter({ value, onChange }: Props) {
                   !value ? "bg-primary/10 text-primary font-semibold" : "hover:bg-muted text-foreground"
                 }`}
               >
-                <span>🗂️</span> Todas as categorias
+                <span><FolderOpen className="w-4 h-4 text-muted-foreground" /></span> Todas as categorias
               </button>
 
               {expenseCategories.length > 0 && (
@@ -148,7 +148,7 @@ function CategoryGroup({
           selected === cat.name ? "bg-primary/10 text-primary font-semibold" : "hover:bg-muted text-foreground"
         }`}
       >
-        <span className="text-base leading-none">{(cat as any).emoji || "📁"}</span>
+        <span className="flex-shrink-0 text-muted-foreground"><Folder className="w-4 h-4" /></span>
         <span className="flex-1">{cat.name}</span>
         {hasSubs && (
           <ChevronDown
@@ -168,7 +168,7 @@ function CategoryGroup({
                 selected === sub.name ? "bg-primary/10 text-primary font-semibold" : "hover:bg-muted text-muted-foreground hover:text-foreground"
               }`}
             >
-              <span className="text-sm leading-none">{(sub as any).emoji || "•"}</span>
+              <span className="text-sm leading-none text-muted-foreground">•</span>
               {sub.name}
             </button>
           ))}

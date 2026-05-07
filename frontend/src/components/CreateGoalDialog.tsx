@@ -10,13 +10,12 @@ interface CreateGoalDialogProps {
   editingGoal?: Goal;
 }
 
-const emojis = ["💻", "✈️", "🛡️", "🚗", "🏠", "💍", "📚", "🎮", "🎵", "⚽", "🎬", "💰"];
 
 export function CreateGoalDialog({ open, onClose, onSave, editingGoal }: CreateGoalDialogProps) {
   const [title, setTitle] = useState(editingGoal?.title || "");
   const [target, setTarget] = useState(editingGoal?.target?.toString() || "");
   const [current, setCurrent] = useState(editingGoal?.current?.toString() || "");
-  const [emoji, setEmoji] = useState(editingGoal?.emoji || "💰");
+  const [emoji, setEmoji] = useState(editingGoal?.emoji || "Target");
   const [priority, setPriority] = useState<"low" | "medium" | "high">(editingGoal?.priority || "medium");
   const [targetDate, setTargetDate] = useState(editingGoal?.targetDate || "");
 
@@ -49,7 +48,7 @@ export function CreateGoalDialog({ open, onClose, onSave, editingGoal }: CreateG
     setTitle("");
     setTarget("");
     setCurrent("");
-    setEmoji("💰");
+    setEmoji("Target");
     setPriority("medium");
     setTargetDate("");
     onClose();

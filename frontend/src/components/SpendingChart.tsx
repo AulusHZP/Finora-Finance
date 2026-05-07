@@ -69,7 +69,7 @@ const getCurrentReferenceDate = (): Date => {
 
 // ─── Chart data builders ──────────────────────────────────────────────────────
 
-const buildWeeklyExpenseData = (transactions: Transaction[]) => {
+const buildWeeklyData = (transactions: Transaction[]) => {
   const referenceDate = getCurrentReferenceDate();
   const currentDayOfWeek = referenceDate.getUTCDay();
   const startOfWeek = new Date(
@@ -93,35 +93,41 @@ const buildWeeklyExpenseData = (transactions: Transaction[]) => {
     );
   }
 
-  const expenseMap = new Map<
+  const dataMap = new Map<
     string,
-    { amount: number; transactions: Transaction[] }
+    { expense: number; income: number; transactions: Transaction[] }
   >();
   transactions.forEach((tx) => {
-    if (normalizeType(tx.type) !== "expense") return;
+    const isIncome = normalizeType(tx.type) === "income";
     const date = parseTxDate(tx.date);
     const key = dayKey(date);
-    const existing = expenseMap.get(key) || { amount: 0, transactions: [] };
-    existing.amount += Math.abs(parseAmount(tx.amount));
+    const existing = dataMap.get(key) || { expense: 0, income: 0, transactions: [] };
+    const amount = Math.abs(parseAmount(tx.amount));
+    if (isIncome) {
+      existing.income += amount;
+    } else {
+      existing.expense += amount;
+    }
     existing.transactions.push(tx);
-    expenseMap.set(key, existing);
+    dataMap.set(key, existing);
   });
 
   return days.map((day) => {
     const key = dayKey(day);
-    const data = expenseMap.get(key) || { amount: 0, transactions: [] };
+    const data = dataMap.get(key) || { expense: 0, income: 0, transactions: [] };
     return {
       name: day
         .toLocaleDateString("pt-BR", { weekday: "short", timeZone: "UTC" })
         .replace(".", ""),
-      amount: data.amount,
+      expense: data.expense,
+      income: data.income,
       transactions: data.transactions,
       dateStr: day.toLocaleDateString("pt-BR", { timeZone: "UTC" }),
     };
   });
 };
 
-const buildMonthlyExpenseData = (transactions: Transaction[]) => {
+const buildMonthlyData = (transactions: Transaction[]) => {
   const referenceDate = getCurrentReferenceDate();
   const months: Date[] = [];
   for (let i = 5; i >= 0; i -= 1) {
@@ -136,28 +142,34 @@ const buildMonthlyExpenseData = (transactions: Transaction[]) => {
     );
   }
 
-  const expenseMap = new Map<
+  const dataMap = new Map<
     string,
-    { amount: number; transactions: Transaction[] }
+    { expense: number; income: number; transactions: Transaction[] }
   >();
   transactions.forEach((tx) => {
-    if (normalizeType(tx.type) !== "expense") return;
+    const isIncome = normalizeType(tx.type) === "income";
     const date = parseTxDate(tx.date);
     const key = monthKey(date);
-    const existing = expenseMap.get(key) || { amount: 0, transactions: [] };
-    existing.amount += Math.abs(parseAmount(tx.amount));
+    const existing = dataMap.get(key) || { expense: 0, income: 0, transactions: [] };
+    const amount = Math.abs(parseAmount(tx.amount));
+    if (isIncome) {
+      existing.income += amount;
+    } else {
+      existing.expense += amount;
+    }
     existing.transactions.push(tx);
-    expenseMap.set(key, existing);
+    dataMap.set(key, existing);
   });
 
   return months.map((month) => {
     const key = monthKey(month);
-    const data = expenseMap.get(key) || { amount: 0, transactions: [] };
+    const data = dataMap.get(key) || { expense: 0, income: 0, transactions: [] };
     return {
       name: month
         .toLocaleDateString("pt-BR", { month: "short", timeZone: "UTC" })
         .replace(".", ""),
-      amount: data.amount,
+      expense: data.expense,
+      income: data.income,
       transactions: data.transactions,
       dateStr: month.toLocaleDateString("pt-BR", {
         month: "long",
@@ -422,21 +434,21 @@ export function SpendingChart({
   const [activeTab, setActiveTab] = useState<ViewTab>("evolution");
   const [selectedDay, setSelectedDay] = useState<{
     dateStr: string;
-    amount: number;
+    expense: number;
+    income: number;
     transactions: Transaction[];
     name: string;
   } | null>(null);
 
   const weeklyData = useMemo(
-    () => buildWeeklyExpenseData(transactions),
+    () => buildWeeklyData(transactions),
     [transactions]
   );
   const monthlyData = useMemo(
-    () => buildMonthlyExpenseData(transactions),
+    () => buildMonthlyData(transactions),
     [transactions]
   );
   const data = period === "weekly" ? weeklyData : monthlyData;
-  const maxAmount = Math.max(...data.map((d) => d.amount));
 
   // Limpa a seleção quando o período ou a aba muda
   useMemo(() => setSelectedDay(null), [period, activeTab]);
@@ -447,8 +459,11 @@ export function SpendingChart({
       return (
         <div className="bg-card border border-border rounded-xl p-3 shadow-lg min-w-[180px]">
           <p className="font-semibold text-foreground mb-1">{pData.dateStr}</p>
+          <p className="text-sm font-medium text-muted-foreground mb-1">
+            Receita: <span className="text-emerald-500 font-bold">{formatCurrencyBRL(pData.income)}</span>
+          </p>
           <p className="text-sm font-medium text-muted-foreground mb-2">
-            Total: {formatCurrencyBRL(pData.amount)}
+            Despesa: <span className="text-rose-500 font-bold">{formatCurrencyBRL(pData.expense)}</span>
           </p>
           <p className="text-[10px] text-primary font-semibold uppercase tracking-wider">
             CLIQUE PARA DETALHES
@@ -564,27 +579,25 @@ export function SpendingChart({
                   content={<CustomTooltip />}
                 />
                 <Bar
-                  dataKey="amount"
-                  radius={[6, 6, 6, 6]}
-                  maxBarSize={45}
+                  dataKey="income"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={30}
+                  fill="#10b981"
                   isAnimationActive
                   animationDuration={800}
                   onClick={(d) => setSelectedDay(d as any)}
                   className="cursor-pointer"
-                >
-                  {data.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={
-                        selectedDay?.name === entry.name
-                          ? "#2563eb"
-                          : entry.amount === maxAmount && entry.amount > 0
-                          ? "#3b82f6"
-                          : "hsl(var(--primary) / 0.3)"
-                      }
-                    />
-                  ))}
-                </Bar>
+                />
+                <Bar
+                  dataKey="expense"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={30}
+                  fill="#f43f5e"
+                  isAnimationActive
+                  animationDuration={800}
+                  onClick={(d) => setSelectedDay(d as any)}
+                  className="cursor-pointer"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -596,9 +609,14 @@ export function SpendingChart({
                 <h3 className="text-sm font-semibold text-foreground">
                   Gastos de {selectedDay.dateStr}
                 </h3>
-                <span className="text-sm font-bold text-foreground bg-muted px-3 py-1 rounded-full">
-                  {formatCurrencyBRL(selectedDay.amount)}
-                </span>
+                <div className="flex gap-2">
+                  <span className="text-xs font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-1 rounded-md">
+                    +{formatCurrencyBRL(selectedDay.income)}
+                  </span>
+                  <span className="text-xs font-bold text-rose-600 bg-rose-100 dark:bg-rose-900/40 px-2 py-1 rounded-md">
+                    -{formatCurrencyBRL(selectedDay.expense)}
+                  </span>
+                </div>
               </div>
 
               {selectedDay.transactions.length > 0 ? (
