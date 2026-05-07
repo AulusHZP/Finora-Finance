@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { formatCurrencyBRL } from "@/lib/currency";
 import type { Transaction } from "@/services/api";
 
