@@ -25,17 +25,30 @@ export function StatCards({
   let incomeTotal = 0;
   let expenseTotal = 0;
   let fixedCostsTotal = 0;
-  let carryoverBalance = 0;
+  let availableTotal = 0;
+
+  // Normalizer just to be ultra safe
+  const normalizeType = (type: unknown): "income" | "expense" => {
+    const v = String(type || "").trim().toLowerCase();
+    if (["income", "receita", "entrada", "credit", "credito", "crédito"].includes(v))
+      return "income";
+    return "expense";
+  };
 
   transactions.forEach((tx) => {
     const datePart = tx.date.split("T")[0];
     const [year, month] = datePart.split("-").map(Number);
     
     const amount = Math.abs(Number(tx.amount) || 0);
-    const isExpense = tx.type === "expense";
-    const isIncome = tx.type === "income";
+    const type = normalizeType(tx.type);
+    const isExpense = type === "expense";
+    const isIncome = type === "income";
 
-    // Mês atual
+    // Sempre conta pro Saldo Disponível Total
+    if (isIncome) availableTotal += amount;
+    if (isExpense) availableTotal -= amount;
+
+    // Mas para os cards de Receita/Despesa, filtra apenas o mês atual
     if (year === currentYear && month - 1 === currentMonth) {
       if (isIncome) {
         incomeTotal += amount;
@@ -51,18 +64,10 @@ export function StatCards({
         }
       }
     } 
-    // Meses anteriores
-    else if (year < currentYear || (year === currentYear && month - 1 < currentMonth)) {
-      if (isIncome) {
-        carryoverBalance += amount;
-      }
-      if (isExpense) {
-        carryoverBalance -= amount;
-      }
-    }
   });
 
-  const availableTotal = carryoverBalance + incomeTotal - expenseTotal;
+  // O valor que veio de meses anteriores é, matematicamente, a diferença do saldo total para o resultado desse mês
+  const carryoverBalance = availableTotal - incomeTotal + expenseTotal;
 
   const fixedCostsRatio = expenseTotal > 0 ? Math.round((fixedCostsTotal / expenseTotal) * 100) : 0;
   const expenseOfIncomeRatio = incomeTotal > 0 ? Math.round((expenseTotal / incomeTotal) * 100) : 0;
