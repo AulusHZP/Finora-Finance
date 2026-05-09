@@ -98,7 +98,7 @@ export function StatCards({
           </div>
           
           <div className="flex flex-col items-center">
-            <p className="text-4xl lg:text-5xl font-extrabold tracking-tight tabular-nums drop-shadow-sm">
+            <p className="text-4xl lg:text-5xl font-extrabold tracking-tight tabular-nums drop-shadow-sm text-foreground dark:text-white">
               {formatCurrencyBRL(availableTotal)}
             </p>
             {carryoverLabel && (
