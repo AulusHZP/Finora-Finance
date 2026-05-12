@@ -11,7 +11,7 @@ import {
   Pie,
   Sector,
 } from "recharts";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { formatCurrencyBRL, parseCurrencyInputBRL } from "@/lib/currency";
 import type { Transaction } from "@/services/api";
 
@@ -67,18 +67,22 @@ const getCurrentReferenceDate = (): Date => {
   return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 };
 
-// ─── Chart data builders ──────────────────────────────────────────────────────
-
-const buildWeeklyData = (transactions: Transaction[]) => {
-  const referenceDate = getCurrentReferenceDate();
-  const currentDayOfWeek = referenceDate.getUTCDay();
-  const startOfWeek = new Date(
+const getWeeklyStartDate = (referenceDate: Date, weekOffset = 0) => {
+  const shiftedDate = new Date(referenceDate);
+  shiftedDate.setUTCDate(shiftedDate.getUTCDate() - weekOffset * 7);
+  const currentDayOfWeek = shiftedDate.getUTCDay();
+  return new Date(
     Date.UTC(
-      referenceDate.getUTCFullYear(),
-      referenceDate.getUTCMonth(),
-      referenceDate.getUTCDate() - currentDayOfWeek
+      shiftedDate.getUTCFullYear(),
+      shiftedDate.getUTCMonth(),
+      shiftedDate.getUTCDate() - currentDayOfWeek
     )
   );
+};
+
+const buildWeeklyData = (transactions: Transaction[], weekOffset = 0) => {
+  const referenceDate = getCurrentReferenceDate();
+  const startOfWeek = getWeeklyStartDate(referenceDate, weekOffset);
 
   const days: Date[] = [];
   for (let i = 0; i < 7; i += 1) {
@@ -192,6 +196,11 @@ const BLUE_PALETTE = [
   "#1e3a8a", // blue-900
   "#1e40af", // blue-800
 ];
+
+const INCOME_BAR_COLOR = "#34d399";
+const EXPENSE_BAR_COLOR = "#f87171";
+const CHART_GRID_COLOR = "hsl(var(--border))";
+const CHART_AXIS_COLOR = "hsl(var(--muted-foreground))";
 
 // ─── Donut chart center label ─────────────────────────────────────────────────
 
@@ -432,6 +441,7 @@ export function SpendingChart({
 }: SpendingChartProps) {
   const [period, setPeriod] = useState<"weekly" | "monthly">("weekly");
   const [activeTab, setActiveTab] = useState<ViewTab>("evolution");
+  const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState<{
     dateStr: string;
     expense: number;
@@ -441,8 +451,8 @@ export function SpendingChart({
   } | null>(null);
 
   const weeklyData = useMemo(
-    () => buildWeeklyData(transactions),
-    [transactions]
+    () => buildWeeklyData(transactions, weekOffset),
+    [transactions, weekOffset]
   );
   const monthlyData = useMemo(
     () => buildMonthlyData(transactions),
@@ -450,24 +460,37 @@ export function SpendingChart({
   );
   const data = period === "weekly" ? weeklyData : monthlyData;
 
-  // Limpa a seleção quando o período ou a aba muda
-  useMemo(() => setSelectedDay(null), [period, activeTab]);
+  const MAX_WEEK_HISTORY = 4;
+
+  const currentWeekStart = useMemo(
+    () => getWeeklyStartDate(getCurrentReferenceDate(), weekOffset),
+    [weekOffset]
+  );
+  const currentWeekEnd = useMemo(
+    () => new Date(Date.UTC(currentWeekStart.getUTCFullYear(), currentWeekStart.getUTCMonth(), currentWeekStart.getUTCDate() + 6)),
+    [currentWeekStart]
+  );
+
+  useEffect(() => {
+    setSelectedDay(null);
+  }, [period, activeTab, weekOffset]);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const pData = payload[0].payload;
       return (
-        <div className="bg-card border border-border rounded-xl p-3 shadow-lg min-w-[180px]">
-          <p className="font-semibold text-foreground mb-1">{pData.dateStr}</p>
-          <p className="text-sm font-medium text-muted-foreground mb-1">
-            Receita: <span className="text-emerald-500 font-bold">{formatCurrencyBRL(pData.income)}</span>
-          </p>
-          <p className="text-sm font-medium text-muted-foreground mb-2">
-            Despesa: <span className="text-destructive font-bold">{formatCurrencyBRL(pData.expense)}</span>
-          </p>
-          <p className="text-[10px] text-primary font-semibold uppercase tracking-wider">
-            CLIQUE PARA DETALHES
-          </p>
+        <div className="bg-slate-950/95 border border-slate-800 text-white rounded-2xl p-4 shadow-2xl min-w-[200px] backdrop-blur-xl">
+          <p className="text-xs uppercase tracking-[0.18em] text-slate-400 mb-2">{pData.dateStr}</p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-300">Receita</span>
+              <span className="font-semibold text-emerald-300">{formatCurrencyBRL(pData.income)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-300">Despesa</span>
+              <span className="font-semibold text-rose-300">{formatCurrencyBRL(pData.expense)}</span>
+            </div>
+          </div>
         </div>
       );
     }
@@ -484,7 +507,9 @@ export function SpendingChart({
           </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {activeTab === "evolution"
-              ? `Evolução do seu saldo — ${period === "weekly" ? "esta semana" : "últimos 6 meses"}`
+              ? period === "weekly"
+                ? `Evolução do seu saldo — ${weekOffset === 0 ? "esta semana" : `semana de ${currentWeekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} a ${currentWeekEnd.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`}`
+                : "últimos 6 meses"
               : "Gastos por categoria no período"}
           </p>
         </div>
@@ -516,28 +541,57 @@ export function SpendingChart({
 
       {/* ── Period selector (only on Evolution tab) ── */}
       {activeTab === "evolution" && (
-        <div className="flex gap-1 bg-muted rounded-xl p-1 self-start mb-5">
-          <button
-            onClick={() => setPeriod("weekly")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              period === "weekly"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Semana
-          </button>
-          <button
-            onClick={() => setPeriod("monthly")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              period === "monthly"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Mês
-          </button>
-        </div>
+        <>
+          <div className="flex gap-1 bg-muted rounded-xl p-1 self-start mb-4">
+            <button
+              onClick={() => setPeriod("weekly")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                period === "weekly"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Semana
+            </button>
+            <button
+              onClick={() => setPeriod("monthly")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                period === "monthly"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Mês
+            </button>
+          </div>
+
+          {period === "weekly" && (
+            <div className="flex flex-col gap-3 mb-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2 rounded-3xl bg-muted/80 p-1.5 shadow-sm ring-1 ring-border">
+                <button
+                  type="button"
+                  disabled={weekOffset >= MAX_WEEK_HISTORY}
+                  onClick={() => setWeekOffset((offset) => Math.min(offset + 1, MAX_WEEK_HISTORY))}
+                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  ← Semana anterior
+                </button>
+                <button
+                  type="button"
+                  disabled={weekOffset === 0}
+                  onClick={() => setWeekOffset((offset) => Math.max(offset - 1, 0))}
+                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Semana seguinte →
+                </button>
+              </div>
+
+              <div className="rounded-full border border-border bg-card/80 px-4 py-2 text-sm font-semibold text-foreground shadow-sm">
+                {`${currentWeekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} – ${currentWeekEnd.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ── Content ── */}
@@ -550,10 +604,10 @@ export function SpendingChart({
                 margin={{ top: 20, right: 0, left: -20, bottom: 0 }}
               >
                 <CartesianGrid
-                  strokeDasharray="3 3"
+                  strokeDasharray="4 4"
                   vertical={false}
-                  stroke="hsl(var(--muted-foreground))"
-                  opacity={0.15}
+                  stroke={CHART_GRID_COLOR}
+                  opacity={0.12}
                 />
                 <XAxis
                   dataKey="name"
@@ -561,40 +615,41 @@ export function SpendingChart({
                   tickLine={false}
                   tick={{
                     fontSize: 12,
-                    fill: "hsl(var(--muted-foreground))",
+                    fill: CHART_AXIS_COLOR,
+                    fontWeight: 600,
                   }}
-                  dy={10}
+                  dy={12}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
                   tick={{
                     fontSize: 12,
-                    fill: "hsl(var(--muted-foreground))",
+                    fill: CHART_AXIS_COLOR,
                   }}
                   tickFormatter={(v) => `R$${v}`}
                 />
                 <Tooltip
-                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
+                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.08 }}
                   content={<CustomTooltip />}
                 />
                 <Bar
                   dataKey="income"
-                  radius={[4, 4, 0, 0]}
+                  radius={[12, 12, 0, 0]}
                   maxBarSize={30}
                   fill="#10b981"
                   isAnimationActive
-                  animationDuration={800}
+                  animationDuration={900}
                   onClick={(d) => setSelectedDay(d as any)}
                   className="cursor-pointer"
                 />
                 <Bar
                   dataKey="expense"
-                  radius={[4, 4, 0, 0]}
+                  radius={[12, 12, 0, 0]}
                   maxBarSize={30}
                   fill="#FF1717"
                   isAnimationActive
-                  animationDuration={800}
+                  animationDuration={900}
                   onClick={(d) => setSelectedDay(d as any)}
                   className="cursor-pointer"
                 />
@@ -621,24 +676,27 @@ export function SpendingChart({
 
               {selectedDay.transactions.length > 0 ? (
                 <div className="space-y-3 max-h-[160px] overflow-y-auto pr-2 scrollbar-thin">
-                  {selectedDay.transactions.map((tx: any, i: number) => (
-                    <div
-                      key={i}
-                      className="flex justify-between items-center bg-muted/40 p-3 rounded-xl hover:bg-muted/60 transition-colors"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-foreground tracking-tight">
-                          {tx.title || tx.category || "Sem título"}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground uppercase pt-0.5">
-                          {tx.category}
+                  {selectedDay.transactions.map((tx: any, i: number) => {
+                    const isIncome = normalizeType(tx.type) === "income";
+                    return (
+                      <div
+                        key={i}
+                        className="flex justify-between items-center bg-muted/40 p-3 rounded-xl hover:bg-muted/60 transition-colors"
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-foreground tracking-tight">
+                            {tx.title || tx.category || "Sem título"}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground uppercase pt-0.5">
+                            {tx.category}
+                          </span>
+                        </div>
+                        <span className={`text-sm font-bold whitespace-nowrap ${isIncome ? "text-emerald-500" : "text-destructive/90"}`}>
+                          {isIncome ? "+" : "-"} {formatCurrencyBRL(Math.abs(parseAmount(tx.amount)))}
                         </span>
                       </div>
-                      <span className="text-sm font-bold text-destructive/90 whitespace-nowrap">
-                        - {formatCurrencyBRL(Math.abs(parseAmount(tx.amount)))}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="bg-muted/30 p-4 rounded-xl text-center">

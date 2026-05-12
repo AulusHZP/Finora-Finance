@@ -92,6 +92,17 @@ export function CategoryPicker({ value, onChange, type }: Props) {
               </div>
             ))
           )}
+
+          <button
+            type="button"
+            onClick={() => handleSelect("Outros")}
+            className={`w-full flex items-center justify-between px-3 py-2 mt-1 text-sm transition-colors hover:bg-muted ${
+              value === "Outros" ? "text-primary font-semibold bg-primary/5" : "text-foreground font-medium"
+            }`}
+          >
+            <span className="truncate pr-2">Outros</span>
+            {value === "Outros" && <Check className="h-4 w-4 shrink-0 text-primary" />}
+          </button>
         </div>
       )}
     </div>

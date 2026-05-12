@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { transactionAPI } from "@/services/api";
 import { parseCurrencyInputBRL } from "@/lib/currency";
@@ -17,6 +18,7 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
   const [method, setMethod] = useState("Crédito");
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentCount, setInstallmentCount] = useState("2");
@@ -25,9 +27,24 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open) {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open, onClose]);
+
   const handleSubmit = async () => {
     if (!amount || !description || !category || !method || !date) {
       setError("Preencha todos os campos");
+      return;
+    }
+
+    if (category === "Outros" && !customCategory.trim()) {
+      setError("Informe a categoria personalizada");
       return;
     }
 
@@ -47,12 +64,18 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
       setLoading(true);
       setError("");
       
+      const finalCategory = category === "Outros"
+        ? customCategory.trim()
+          ? `Outro: ${customCategory.trim()}`
+          : category
+        : category;
+
       console.log("Submitting transaction:", {
         title: description,
         amount: parsedAmount,
         type,
         isFixed,
-        category,
+        category: finalCategory,
         method,
         date,
         installmentCount: isInstallment ? parsedInstallmentCount : 1
@@ -63,7 +86,7 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
         amount: parsedAmount,
         type,
         isFixed,
-        category,
+        category: finalCategory,
         method,
         date,
         installmentCount: isInstallment ? parsedInstallmentCount : 1
@@ -73,6 +96,7 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
       setAmount("");
       setDescription("");
       setCategory("");
+      setCustomCategory("");
       setMethod("Crédito");
       setIsInstallment(false);
       setInstallmentCount("2");
@@ -93,14 +117,14 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <>
-      <div className="fixed inset-0 bg-foreground/20 z-50 animate-fade-in" onClick={onClose} />
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-3xl p-6 pb-10 animate-slide-up lg:bottom-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl lg:max-w-lg lg:w-full lg:pb-6 lg:shadow-xl">
+      <div className="fixed inset-0 bg-foreground/20 z-[999] animate-fade-in" onClick={onClose} role="button" tabIndex={-1} onKeyDown={(e) => e.key === "Escape" && onClose()} />
+      <div className="fixed bottom-0 left-0 right-0 z-[999] bg-card rounded-t-3xl p-6 pb-10 animate-slide-up max-h-[90vh] overflow-y-auto lg:bottom-auto lg:left-1/2 lg:right-auto lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl lg:max-w-lg lg:w-full lg:max-h-[90vh] lg:pb-6 lg:shadow-xl">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-semibold text-foreground">Nova Transação</h2>
-          <button onClick={onClose} className="h-7 w-7 rounded-full bg-muted flex items-center justify-center press-scale">
-            <X className="h-3.5 w-3.5 text-muted-foreground" />
+          <button onClick={onClose} className="h-9 w-9 rounded-full bg-muted flex items-center justify-center press-scale hover:bg-muted/80 transition-default flex-shrink-0">
+            <X className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
 
@@ -134,8 +158,30 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Categoria</label>
-            <CategoryPicker value={category} onChange={setCategory} type={type} />
+            <CategoryPicker
+              value={category}
+              onChange={(value) => {
+                setCategory(value);
+                if (value !== "Outros") {
+                  setCustomCategory("");
+                }
+              }}
+              type={type}
+            />
           </div>
+
+          {(category === "Outros" || category.startsWith("Outro:")) && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Especifique a categoria</label>
+              <input
+                type="text"
+                value={customCategory}
+                onChange={(e) => setCustomCategory(e.target.value)}
+                placeholder="Ex: Areia para gato, Doação, etc"
+                className="w-full h-10 px-3 bg-muted rounded-lg text-foreground text-sm placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
+              />
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Método de Pagamento</label>
@@ -212,8 +258,18 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
           <button className="w-full h-10 bg-primary text-primary-foreground rounded-lg font-medium text-sm press-scale hover:opacity-90 transition-default mt-1 disabled:opacity-50" onClick={handleSubmit} disabled={loading}>
             {loading ? "Adicionando..." : "Adicionar Transação"}
           </button>
+          
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full h-10 mt-2 bg-muted text-foreground rounded-lg font-medium text-sm press-scale hover:bg-muted/80 transition-default"
+          >
+            Cancelar
+          </button>
+          <div className="h-4" />
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
