@@ -34,8 +34,12 @@ export function CategoryPicker({ value, onChange, type }: Props) {
   }, []);
 
   const filtered = useMemo(() => {
-    if (!type) return categories;
-    return categories.filter((c) => (c as any).type === type);
+    let result = categories;
+    if (type) {
+      result = categories.filter((c) => (c as any).type === type);
+    }
+    // Filter out "Outro" from the dynamic list since we add it statically at the bottom
+    return result.filter((c) => c.name !== "Outro" && c.name !== "Outros");
   }, [categories, type]);
 
   const handleSelect = (categoryName: string) => {
@@ -95,13 +99,13 @@ export function CategoryPicker({ value, onChange, type }: Props) {
 
           <button
             type="button"
-            onClick={() => handleSelect("Outros")}
+            onClick={() => handleSelect("Outro")}
             className={`w-full flex items-center justify-between px-3 py-2 mt-1 text-sm transition-colors hover:bg-muted ${
-              value === "Outros" ? "text-primary font-semibold bg-primary/5" : "text-foreground font-medium"
+              value === "Outro" ? "text-primary font-semibold bg-primary/5" : "text-foreground font-medium"
             }`}
           >
-            <span className="truncate pr-2">Outros</span>
-            {value === "Outros" && <Check className="h-4 w-4 shrink-0 text-primary" />}
+            <span className="truncate pr-2">Outro</span>
+            {value === "Outro" && <Check className="h-4 w-4 shrink-0 text-primary" />}
           </button>
         </div>
       )}

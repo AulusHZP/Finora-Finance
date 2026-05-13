@@ -1,14 +1,40 @@
 import { prisma } from "../config/prisma";
 
 /** Resolves a category name to its ID, searching parents and subcategories. */
-const resolveCategoryId = async (name: string): Promise<string | null> => {
+const resolveCategoryId = async (name: string, type: "income" | "expense"): Promise<string | null> => {
   if (!name) return null;
+  
   // Try main category first, then any subcategory
   const existing = await prisma.category.findFirst({ where: { name } });
   if (existing) return existing.id;
-  // Create as a top-level category if not found
-  const created = await prisma.category.create({ data: { name } });
-  return created.id;
+
+  // Se não existir (ex: "Outro" que pode ter sido excluido), criamos apenas ela.
+  // Evitamos criar subcategorias customizadas.
+  if (name === "Outro" || name === "Outros") {
+    let outroCategory = await prisma.category.findFirst({
+      where: { name: "Outro" }
+    });
+    
+    if (!outroCategory) {
+      outroCategory = await prisma.category.create({
+        data: { name: "Outro", type: "expense", emoji: "📌" }
+      });
+    }
+    return outroCategory.id;
+  }
+
+  // Fallback seguro: se chegar uma categoria que não existe, joga para "Outro"
+  let fallback = await prisma.category.findFirst({
+    where: { name: "Outro" }
+  });
+  
+  if (!fallback) {
+    fallback = await prisma.category.create({
+      data: { name: "Outro", type: "expense", emoji: "📌" }
+    });
+  }
+
+  return fallback.id;
 };
 
 export const getCategories = async () => {
@@ -41,7 +67,7 @@ type UpdateTransactionInput = {
 };
 
 export const createTransaction = async (input: CreateTransactionInput) => {
-  const categoryId = input.category ? await resolveCategoryId(input.category) : null;
+  const categoryId = input.category ? await resolveCategoryId(input.category, input.type) : null;
 
   const transaction = await prisma.transaction.create({
     data: {

@@ -43,9 +43,12 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
       return;
     }
 
-    if (category === "Outros" && !customCategory.trim()) {
-      setError("Informe a categoria personalizada");
-      return;
+    // Prevent saving "Outro" without a custom category
+    if (category === "Outro") {
+      if (!customCategory.trim()) {
+        setError("Informe o nome da categoria personalizada");
+        return;
+      }
     }
 
     const parsedAmount = parseCurrencyInputBRL(amount);
@@ -64,14 +67,16 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
       setLoading(true);
       setError("");
       
-      const finalCategory = category === "Outros"
-        ? customCategory.trim()
-          ? `Outro: ${customCategory.trim()}`
-          : category
-        : category;
+      // We always send the actual selected category to the backend
+      // If they selected "Outro", we send "Outro". 
+      // The custom text will be appended to the transaction description so it's not lost.
+      const finalCategory = category;
+      const finalTitle = category === "Outro" && customCategory.trim() 
+        ? `${description} (${customCategory.trim()})`
+        : description;
 
       console.log("Submitting transaction:", {
-        title: description,
+        title: finalTitle,
         amount: parsedAmount,
         type,
         isFixed,
@@ -82,7 +87,7 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
       });
 
       await transactionAPI.createTransaction({
-        title: description,
+        title: finalTitle,
         amount: parsedAmount,
         type,
         isFixed,
@@ -120,44 +125,44 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
   return createPortal(
     <>
       <div className="fixed inset-0 bg-foreground/20 z-[999] animate-fade-in" onClick={onClose} role="button" tabIndex={-1} onKeyDown={(e) => e.key === "Escape" && onClose()} />
-      <div className="fixed bottom-0 left-0 right-0 z-[999] bg-card rounded-t-3xl p-6 pb-10 animate-slide-up max-h-[90vh] overflow-y-auto lg:bottom-auto lg:left-1/2 lg:right-auto lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl lg:max-w-lg lg:w-full lg:max-h-[90vh] lg:pb-6 lg:shadow-xl">
-        <div className="flex items-center justify-between mb-5">
+      <div className="fixed bottom-0 left-0 right-0 z-[999] bg-card rounded-t-3xl p-4 pb-6 animate-slide-up max-h-[95vh] overflow-y-auto lg:bottom-auto lg:left-1/2 lg:right-auto lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl lg:max-w-lg lg:w-full lg:max-h-[95vh] lg:p-5 lg:shadow-xl">
+        <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-foreground">Nova Transação</h2>
-          <button onClick={onClose} className="h-9 w-9 rounded-full bg-muted flex items-center justify-center press-scale hover:bg-muted/80 transition-default flex-shrink-0">
-            <X className="h-5 w-5 text-muted-foreground" />
+          <button onClick={onClose} className="h-8 w-8 rounded-full bg-muted flex items-center justify-center press-scale hover:bg-muted/80 transition-default flex-shrink-0">
+            <X className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
 
-        <div className="flex gap-2 mb-5">
-          <button onClick={() => setType("expense")} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-default press-scale ${type === "expense" ? "bg-error/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
+        <div className="flex gap-2 mb-3">
+          <button onClick={() => setType("expense")} className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-sm font-medium transition-default press-scale ${type === "expense" ? "bg-error/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
             <ArrowUpRight className="h-4 w-4" /> Despesa
           </button>
-          <button onClick={() => setType("income")} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-default press-scale ${type === "income" ? "bg-success-light text-success" : "bg-muted text-muted-foreground"}`}>
+          <button onClick={() => setType("income")} className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-sm font-medium transition-default press-scale ${type === "income" ? "bg-success-light text-success" : "bg-muted text-muted-foreground"}`}>
             <ArrowDownLeft className="h-4 w-4" /> Receita
           </button>
         </div>
 
-        <div className="space-y-3.5">
+        <div className="space-y-2.5">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Valor</label>
+            <label className="text-xs font-medium text-muted-foreground mb-0.5 block">Valor</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold text-base pointer-events-none">R$</span>
-              <input type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="w-full h-10 pl-11 pr-3 bg-muted rounded-lg text-foreground text-base font-semibold placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" autoFocus />
+              <input type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" className="w-full h-9 pl-11 pr-3 bg-muted rounded-lg text-foreground text-base font-semibold placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" autoFocus />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Descrição</label>
-            <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Para que foi?" className="w-full h-10 px-3 bg-muted rounded-lg text-foreground text-sm placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" />
+            <label className="text-xs font-medium text-muted-foreground mb-0.5 block">Descrição</label>
+            <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Para que foi?" className="w-full h-9 px-3 bg-muted rounded-lg text-foreground text-sm placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Data</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full h-10 px-3 bg-muted rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" />
+            <label className="text-xs font-medium text-muted-foreground mb-0.5 block">Data</label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full h-9 px-3 bg-muted rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default" />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Categoria</label>
+            <label className="text-xs font-medium text-muted-foreground mb-0.5 block">Categoria</label>
             <CategoryPicker
               value={category}
               onChange={(value) => {
@@ -170,21 +175,21 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
             />
           </div>
 
-          {(category === "Outros" || category.startsWith("Outro:")) && (
+          {category === "Outro" && (
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Especifique a categoria</label>
+              <label className="text-xs font-medium text-muted-foreground mb-0.5 block">Especifique a categoria</label>
               <input
                 type="text"
                 value={customCategory}
                 onChange={(e) => setCustomCategory(e.target.value)}
                 placeholder="Ex: Areia para gato, Doação, etc"
-                className="w-full h-10 px-3 bg-muted rounded-lg text-foreground text-sm placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
+                className="w-full h-9 px-3 bg-muted rounded-lg text-foreground text-sm placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
               />
             </div>
           )}
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Método de Pagamento</label>
+            <label className="text-xs font-medium text-muted-foreground mb-0.5 block">Método de Pagamento</label>
             <div className="flex flex-wrap gap-1.5">
               {methods.map((m) => (
                 <button
@@ -205,8 +210,8 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
 
           {method === "Crédito" && (
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Compra parcelada?</label>
-              <div className="flex gap-1.5 mb-2">
+              <label className="text-xs font-medium text-muted-foreground mb-0.5 block">Compra parcelada?</label>
+              <div className="flex gap-1.5 mb-1.5">
                 <button
                   type="button"
                   onClick={() => setIsInstallment(false)}
@@ -232,14 +237,14 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
                   value={installmentCount}
                   onChange={(e) => setInstallmentCount(e.target.value)}
                   placeholder="Numero de parcelas"
-                  className="w-full h-10 px-3 bg-muted rounded-lg text-foreground text-sm placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
+                  className="w-full h-9 px-3 bg-muted rounded-lg text-foreground text-sm placeholder:text-disabled-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-default"
                 />
               )}
             </div>
           )}
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Tag</label>
+            <label className="text-xs font-medium text-muted-foreground mb-0.5 block">Tag</label>
             <button
               type="button"
               onClick={() => setIsFixed((prev) => !prev)}
@@ -250,7 +255,7 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
           </div>
 
           {error && (
-            <div className="p-3 bg-error/10 text-destructive rounded-lg text-xs font-medium">
+            <div className="p-2.5 bg-error/10 text-destructive rounded-lg text-xs font-medium">
               {error}
             </div>
           )}
@@ -262,11 +267,10 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
           <button
             type="button"
             onClick={onClose}
-            className="w-full h-10 mt-2 bg-muted text-foreground rounded-lg font-medium text-sm press-scale hover:bg-muted/80 transition-default"
+            className="w-full h-9 mt-1 bg-muted text-foreground rounded-lg font-medium text-sm press-scale hover:bg-muted/80 transition-default"
           >
             Cancelar
           </button>
-          <div className="h-4" />
         </div>
       </div>
     </>,
