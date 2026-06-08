@@ -8,9 +8,10 @@ import {
   Settings,
   Menu,
   X,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getStoredUser } from "@/lib/auth";
+import { getStoredUser, logoutRequest, clearAuthSession } from "@/lib/auth";
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
 
@@ -93,6 +94,17 @@ function MobileDrawer({
 }) {
   const { pathname } = useLocation();
 
+  const handleLogout = async () => {
+    try {
+      await logoutRequest();
+    } catch (error) {
+      // Ignore errors on logout
+    } finally {
+      clearAuthSession();
+      window.location.href = "/auth";
+    }
+  };
+
   // Close drawer on navigation
   useEffect(() => {
     onClose();
@@ -174,13 +186,22 @@ function MobileDrawer({
         </nav>
 
         {/* Settings footer */}
-        <RouterNavLink
-          to="/settings"
-          className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-white/10 transition-colors"
-        >
-          <Settings className="h-4 w-4 shrink-0" />
-          Configurações
-        </RouterNavLink>
+        <div className="flex flex-col gap-1.5 mt-auto border-t border-white/10 pt-3">
+          <RouterNavLink
+            to="/settings"
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-white/10 transition-colors"
+          >
+            <Settings className="h-4 w-4 shrink-0" />
+            Configurações
+          </RouterNavLink>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors text-left"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            Sair
+          </button>
+        </div>
       </div>
     </>
   );

@@ -176,7 +176,7 @@ const Index = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
             {/* Table */}
             <div className="lg:col-span-8 sticky top-6">
-              <div className="bg-card rounded-3xl border border-border/50 p-6 shadow-sm flex flex-col max-h-[650px] ring-1 ring-black/5 dark:ring-white/5">
+              <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md rounded-2xl border border-white/70 dark:border-white/10 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col max-h-[650px] transition-all duration-300">
                 <div className="flex items-center justify-between mb-6 shrink-0">
                   <h2 className="text-lg font-semibold text-foreground">Últimas Transações</h2>
                   <Link to="/transactions" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1">

@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id            String        @id @default(uuid())
-  name          String
-  email         String        @unique
-  password      String
-  transactions  Transaction[]
-  goals         Goal[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  name            String
+  email           String        @unique
+  password        String
+  balanceOffset   Float         @default(0)
+  transactions    Transaction[]
+  goals           Goal[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model Transaction {

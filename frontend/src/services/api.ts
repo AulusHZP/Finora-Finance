@@ -45,6 +45,7 @@ export interface DashboardSummary {
   expenseOfIncomeRatio: number;
   fixedCostsRatio: number;
   carryoverBalance: number;
+  balanceOffset: number;
 }
 
 export interface DashboardData {
@@ -392,5 +393,24 @@ export const dashboardAPI = {
 
       return data.data.dashboard;
     }, 15_000);
+  }
+};
+
+export const balanceAPI = {
+  async updateBalanceOffset(offset: number): Promise<number> {
+    const token = getAuthToken();
+    if (!token) throw new Error("Não autenticado");
+
+    const responseData = await requestJson<{ data: { balanceOffset: number } }>(`${API_BASE_URL}/auth/balance-offset`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ offset })
+    }, token);
+
+    invalidateDashboardData();
+    notifyTransactionsUpdated();
+    return responseData.data.balanceOffset;
   }
 };

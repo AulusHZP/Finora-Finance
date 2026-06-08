@@ -10,6 +10,16 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    proxy: {
+      // Proxy local `/api/*` requests to the local backend
+      // Usage: set `VITE_API_URL=/api` in `.env.local` and frontend will call `/api/...`
+      "/api": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+    },
   },
   plugins: [react()].filter(Boolean),
   resolve: {

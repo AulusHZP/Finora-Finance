@@ -7,7 +7,7 @@ export function DashboardGoalsWidget({ goals }: { goals: Goal[] }) {
   const displayGoals = goals.slice(0, 3);
 
   return (
-    <div className="bg-card rounded-3xl border border-border/50 p-6 shadow-sm flex flex-col h-full ring-1 ring-black/5 dark:ring-white/5 group-hover:shadow-md transition-all">
+    <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md rounded-2xl border border-white/70 dark:border-white/10 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col h-full group transition-all">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-foreground">Objetivos</h2>
         <Link to="/goals" className="text-primary p-2 hover:bg-primary/10 rounded-full transition-colors flex items-center justify-center">

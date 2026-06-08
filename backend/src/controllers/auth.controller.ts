@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { z } from "zod";
-import { getUserById, loginUser, registerUser, updateUserProfile } from "../services/auth.service";
+import { getUserById, loginUser, registerUser, updateUserProfile, setBalanceOffset } from "../services/auth.service";
 import { ok } from "../utils/http";
 
 const registerSchema = z.object({
@@ -91,4 +91,28 @@ export const logoutController = async (_req: Request, res: Response) => {
   return res.status(200).json(
     ok("Logout successful")
   );
+};
+
+const balanceOffsetSchema = z.object({
+  offset: z.number({ required_error: "Offset is required" })
+});
+
+export const balanceOffsetController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized"
+      });
+    }
+
+    const payload = balanceOffsetSchema.parse(req.body);
+    const offset = await setBalanceOffset(userId, payload.offset);
+
+    return res.status(200).json(ok("Balance offset updated successfully", { balanceOffset: offset }));
+  } catch (error) {
+    return next(error);
+  }
 };

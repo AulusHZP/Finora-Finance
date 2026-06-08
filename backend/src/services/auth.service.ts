@@ -163,3 +163,28 @@ export const updateUserProfile = async ({ userId, name, email }: UpdateProfileIn
 
   return updatedUser;
 };
+
+export const getBalanceOffset = async (userId: string): Promise<number> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { balanceOffset: true }
+  });
+
+  if (!user) {
+    const err = new Error("User not found");
+    (err as Error & { statusCode?: number }).statusCode = 404;
+    throw err;
+  }
+
+  return user.balanceOffset;
+};
+
+export const setBalanceOffset = async (userId: string, offset: number): Promise<number> => {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { balanceOffset: offset },
+    select: { balanceOffset: true }
+  });
+
+  return user.balanceOffset;
+};

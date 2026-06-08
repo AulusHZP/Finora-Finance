@@ -6,7 +6,7 @@
  * - Produção: https://finora-finance-h6z4.onrender.com (via .env)
  */
 
-export const API_BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) || "http://localhost:4000";
+export const API_BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) || "https://finora-finance-h6z4.onrender.com";
 
 // Validação em desenvolvimento
 if (import.meta.env.DEV && !import.meta.env.VITE_API_URL) {

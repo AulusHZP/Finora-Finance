@@ -12,7 +12,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
-    "clean:outro-categories": "tsx scripts/clean-outro-categories.ts"
+    "clean:outro-categories": "tsx scripts/clean-outro-categories.ts",
+    "docker:up": "powershell -NoProfile -ExecutionPolicy Bypass -File ./start-backend-docker.ps1"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

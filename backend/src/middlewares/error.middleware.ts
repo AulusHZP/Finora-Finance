@@ -6,13 +6,26 @@ type AppError = Error & {
   statusCode?: number;
 };
 
-export const errorMiddleware = (err: AppError, _req: Request, res: Response, _next: NextFunction) => {
-  console.error("Error caught by middleware:", {
-    name: err.name,
-    message: err.message,
-    stack: err.stack,
-    statusCode: err.statusCode
-  });
+export const errorMiddleware = (err: AppError, req: Request, res: Response, _next: NextFunction) => {
+  // Log error with useful request context to help debugging in production
+  try {
+    const safeHeaders = { ...req.headers } as Record<string, unknown>;
+    // Redact sensitive headers
+    if (safeHeaders.authorization) safeHeaders.authorization = "<redacted>";
+
+    console.error("Error caught by middleware:", {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+      statusCode: err.statusCode,
+      path: req.originalUrl,
+      method: req.method,
+      headers: safeHeaders,
+      body: req.body,
+    });
+  } catch (logErr) {
+    console.error("Failed to log error context", logErr);
+  }
 
   if (err instanceof ZodError) {
     console.error("Zod validation error:", err.issues);
@@ -30,5 +43,6 @@ export const errorMiddleware = (err: AppError, _req: Request, res: Response, _ne
   const message = statusCode >= 500 ? "Internal server error" : err.message;
 
   console.error(`Responding with status ${statusCode}: ${message}`);
+  // Return a stable JSON response; avoid leaking stack trace to clients
   return res.status(statusCode).json(fail(message));
 };

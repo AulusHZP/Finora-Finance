@@ -498,14 +498,14 @@ export function SpendingChart({
   };
 
   return (
-    <div className="bg-card rounded-3xl border border-border/50 p-6 shadow-sm flex flex-col h-full ring-1 ring-black/5 dark:ring-white/5 group transition-all hover:shadow-md">
+    <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md rounded-2xl border border-white/70 dark:border-white/10 p-4 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full group transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
       {/* ── Header ── */}
-      <div className="flex items-start justify-between mb-5">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4 sm:mb-5">
+        <div className="min-w-0">
+          <h2 className="text-base sm:text-lg font-semibold text-foreground">
             Resumo de Gastos
           </h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2">
             {activeTab === "evolution"
               ? period === "weekly"
                 ? `Evolução do seu saldo — ${weekOffset === 0 ? "esta semana" : `semana de ${currentWeekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} a ${currentWeekEnd.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`}`
@@ -515,7 +515,7 @@ export function SpendingChart({
         </div>
 
         {/* View tab toggle */}
-        <div className="flex gap-1 bg-muted rounded-xl p-1 shrink-0">
+        <div className="flex gap-1 bg-muted rounded-xl p-1 shrink-0 self-start">
           <button
             onClick={() => setActiveTab("evolution")}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -542,7 +542,7 @@ export function SpendingChart({
       {/* ── Period selector (only on Evolution tab) ── */}
       {activeTab === "evolution" && (
         <>
-          <div className="flex gap-1 bg-muted rounded-xl p-1 self-start mb-4">
+          <div className="flex gap-1 bg-muted rounded-xl p-1 self-start mb-3 sm:mb-4">
             <button
               onClick={() => setPeriod("weekly")}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -566,28 +566,34 @@ export function SpendingChart({
           </div>
 
           {period === "weekly" && (
-            <div className="flex flex-col gap-3 mb-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-2 rounded-3xl bg-muted/80 p-1.5 shadow-sm ring-1 ring-border">
+            <div className="flex flex-col gap-2 mb-4 sm:mb-5">
+              {/* Navigation + date range in a single compact row */}
+              <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
                   disabled={weekOffset >= MAX_WEEK_HISTORY}
                   onClick={() => setWeekOffset((offset) => Math.min(offset + 1, MAX_WEEK_HISTORY))}
-                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shrink-0 rounded-full bg-muted hover:bg-muted/80 p-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-foreground shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Semana anterior"
                 >
-                  ← Semana anterior
+                  <span className="hidden sm:inline">← Semana anterior</span>
+                  <span className="sm:hidden">←</span>
                 </button>
+
+                <div className="rounded-full border border-border bg-card/80 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-foreground shadow-sm text-center whitespace-nowrap">
+                  {`${currentWeekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} – ${currentWeekEnd.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`}
+                </div>
+
                 <button
                   type="button"
                   disabled={weekOffset === 0}
                   onClick={() => setWeekOffset((offset) => Math.max(offset - 1, 0))}
-                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shrink-0 rounded-full bg-muted hover:bg-muted/80 p-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-foreground shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Semana seguinte"
                 >
-                  Semana seguinte →
+                  <span className="hidden sm:inline">Semana seguinte →</span>
+                  <span className="sm:hidden">→</span>
                 </button>
-              </div>
-
-              <div className="rounded-full border border-border bg-card/80 px-4 py-2 text-sm font-semibold text-foreground shadow-sm">
-                {`${currentWeekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} – ${currentWeekEnd.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`}
               </div>
             </div>
           )}
@@ -597,11 +603,11 @@ export function SpendingChart({
       {/* ── Content ── */}
       {activeTab === "evolution" ? (
         <>
-          <div className="flex-1 w-full min-h-[250px]">
-            <ResponsiveContainer width="100%" height={260}>
+          <div className="flex-1 w-full min-h-[220px] sm:min-h-[250px] -ml-1 sm:ml-0">
+            <ResponsiveContainer width="100%" height={240}>
               <BarChart
                 data={data}
-                margin={{ top: 20, right: 0, left: -20, bottom: 0 }}
+                margin={{ top: 10, right: 4, left: -10, bottom: 0 }}
               >
                 <CartesianGrid
                   strokeDasharray="4 4"
@@ -614,20 +620,25 @@ export function SpendingChart({
                   axisLine={false}
                   tickLine={false}
                   tick={{
-                    fontSize: 12,
+                    fontSize: 11,
                     fill: CHART_AXIS_COLOR,
                     fontWeight: 600,
                   }}
-                  dy={12}
+                  dy={8}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
+                  width={45}
                   tick={{
-                    fontSize: 12,
+                    fontSize: 10,
                     fill: CHART_AXIS_COLOR,
                   }}
-                  tickFormatter={(v) => `R$${v}`}
+                  tickFormatter={(v) => {
+                    if (v === 0) return "R$0";
+                    if (Math.abs(v) >= 1000) return `R$${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k`;
+                    return `R$${v}`;
+                  }}
                 />
                 <Tooltip
                   cursor={{ fill: "hsl(var(--muted))", opacity: 0.08 }}
@@ -635,8 +646,8 @@ export function SpendingChart({
                 />
                 <Bar
                   dataKey="income"
-                  radius={[12, 12, 0, 0]}
-                  maxBarSize={30}
+                  radius={[8, 8, 0, 0]}
+                  maxBarSize={28}
                   fill="#10b981"
                   isAnimationActive
                   animationDuration={900}
@@ -645,8 +656,8 @@ export function SpendingChart({
                 />
                 <Bar
                   dataKey="expense"
-                  radius={[12, 12, 0, 0]}
-                  maxBarSize={30}
+                  radius={[8, 8, 0, 0]}
+                  maxBarSize={28}
                   fill="#FF1717"
                   isAnimationActive
                   animationDuration={900}
@@ -659,39 +670,39 @@ export function SpendingChart({
 
           {/* Selected day details */}
           {selectedDay && (
-            <div className="mt-6 pt-6 border-t border-border animate-in slide-in-from-bottom-2 fade-in duration-300">
-              <div className="flex items-center justify-between mb-4">
+            <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-border animate-in slide-in-from-bottom-2 fade-in duration-300">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4">
                 <h3 className="text-sm font-semibold text-foreground">
                   Gastos de {selectedDay.dateStr}
                 </h3>
                 <div className="flex gap-2">
-                  <span className="text-xs font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-1 rounded-md">
+                  <span className="text-[11px] sm:text-xs font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-1 rounded-md">
                     +{formatCurrencyBRL(selectedDay.income)}
                   </span>
-                  <span className="text-xs font-bold text-destructive bg-destructive/10 px-2 py-1 rounded-md">
+                  <span className="text-[11px] sm:text-xs font-bold text-destructive bg-destructive/10 px-2 py-1 rounded-md">
                     -{formatCurrencyBRL(selectedDay.expense)}
                   </span>
                 </div>
               </div>
 
               {selectedDay.transactions.length > 0 ? (
-                <div className="space-y-3 max-h-[160px] overflow-y-auto pr-2 scrollbar-thin">
+                <div className="space-y-2 sm:space-y-3 max-h-[160px] overflow-y-auto pr-2 scrollbar-thin">
                   {selectedDay.transactions.map((tx: any, i: number) => {
                     const isIncome = normalizeType(tx.type) === "income";
                     return (
                       <div
                         key={i}
-                        className="flex justify-between items-center bg-muted/40 p-3 rounded-xl hover:bg-muted/60 transition-colors"
+                        className="flex justify-between items-center bg-muted/40 p-2.5 sm:p-3 rounded-xl hover:bg-muted/60 transition-colors gap-3"
                       >
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-foreground tracking-tight">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs sm:text-sm font-medium text-foreground tracking-tight truncate">
                             {tx.title || tx.category || "Sem título"}
                           </span>
-                          <span className="text-[11px] text-muted-foreground uppercase pt-0.5">
+                          <span className="text-[10px] sm:text-[11px] text-muted-foreground uppercase pt-0.5">
                             {tx.category}
                           </span>
                         </div>
-                        <span className={`text-sm font-bold whitespace-nowrap ${isIncome ? "text-emerald-500" : "text-destructive/90"}`}>
+                        <span className={`text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 ${isIncome ? "text-emerald-500" : "text-destructive/90"}`}>
                           {isIncome ? "+" : "-"} {formatCurrencyBRL(Math.abs(parseAmount(tx.amount)))}
                         </span>
                       </div>
@@ -699,8 +710,8 @@ export function SpendingChart({
                   })}
                 </div>
               ) : (
-                <div className="bg-muted/30 p-4 rounded-xl text-center">
-                  <p className="text-sm text-muted-foreground">
+                <div className="bg-muted/30 p-3 sm:p-4 rounded-xl text-center">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Nenhum gasto registrado neste período.
                   </p>
                 </div>

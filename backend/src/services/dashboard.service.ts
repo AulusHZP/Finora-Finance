@@ -37,6 +37,7 @@ export type DashboardSummary = {
   expenseOfIncomeRatio: number;
   fixedCostsRatio: number;
   carryoverBalance: number;
+  balanceOffset: number;
 };
 
 export type DashboardData = {
@@ -68,7 +69,8 @@ const getCurrentMonthBounds = () => {
 
 const buildSummary = (
   allTransactions: DashboardTransaction[],
-  currentMonthStart: Date
+  currentMonthStart: Date,
+  balanceOffset: number
 ): DashboardSummary => {
   // Split transactions into current month vs previous months
   const currentMonth = allTransactions.filter((t) => t.date >= currentMonthStart);
@@ -108,21 +110,22 @@ const buildSummary = (
     }
   }
 
-  // Available balance = carryover from previous months + current month income - current month expenses
+  // Available balance = carryover from previous months + current month income - current month expenses + manual offset
   const effectiveIncome = incomeTotal + (carryoverBalance > 0 ? carryoverBalance : 0);
 
   return {
     incomeTotal,
     expenseTotal,
-    availableBalance: effectiveIncome - expenseTotal,
+    availableBalance: effectiveIncome - expenseTotal + balanceOffset,
     fixedCostsTotal,
     expenseOfIncomeRatio: incomeTotal > 0 ? Math.round((expenseTotal / incomeTotal) * 100) : 0,
     fixedCostsRatio: expenseTotal > 0 ? Math.round((fixedCostsTotal / expenseTotal) * 100) : 0,
-    carryoverBalance
+    carryoverBalance,
+    balanceOffset
   };
 };
 
-const buildDashboardValue = (transactions: DashboardTransaction[], goals: DashboardGoal[]): DashboardData => {
+const buildDashboardValue = (transactions: DashboardTransaction[], goals: DashboardGoal[], balanceOffset: number): DashboardData => {
   const { start: currentMonthStart } = getCurrentMonthBounds();
 
   // Sort all transactions newest first
@@ -135,7 +138,7 @@ const buildDashboardValue = (transactions: DashboardTransaction[], goals: Dashbo
     transactions: sortedTransactions,
     goals: sortedGoals,
     // Summary is still scoped to the current month (with carryover from previous months).
-    summary: buildSummary(sortedTransactions, currentMonthStart),
+    summary: buildSummary(sortedTransactions, currentMonthStart, balanceOffset),
     generatedAt: new Date().toISOString()
   };
 };
@@ -150,7 +153,7 @@ export const getDashboardByUserId = async (userId: string): Promise<DashboardDat
     return cached.value;
   }
 
-  const [transactions, goals] = await Promise.all([
+  const [transactions, goals, user] = await Promise.all([
     prisma.transaction.findMany({
       where: { userId },
       orderBy: { date: "desc" },
@@ -185,10 +188,15 @@ export const getDashboardByUserId = async (userId: string): Promise<DashboardDat
         createdAt: true,
         updatedAt: true
       }
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { balanceOffset: true }
     })
   ]);
 
-  const value = buildDashboardValue(transactions, goals);
+  const balanceOffset = user?.balanceOffset ?? 0;
+  const value = buildDashboardValue(transactions, goals, balanceOffset);
   dashboardCache.set(userId, {
     expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS,
     value

@@ -155,7 +155,7 @@ export const updateTransaction = async (transactionId: string, userId: string, d
   }
 
   const { category, ...rest } = data;
-  const categoryId = category !== undefined ? await resolveCategoryId(category) : undefined;
+  const categoryId = category !== undefined ? await resolveCategoryId(category, (data.type || transaction.type) as "income" | "expense") : undefined;
 
   const updated = await prisma.transaction.update({
     where: { id: transactionId },

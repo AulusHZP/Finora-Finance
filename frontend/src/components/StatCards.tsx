@@ -1,6 +1,8 @@
-import { TrendingUp, TrendingDown, Wallet, PieChart, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { TrendingUp, TrendingDown, Wallet, PieChart, AlertTriangle, RefreshCw } from "lucide-react";
 import { formatCurrencyBRL } from "@/lib/currency";
 import type { Transaction, DashboardSummary } from "@/services/api";
+import { BalanceAdjustSheet } from "@/components/BalanceAdjustSheet";
 
 type AlertState = 'healthy' | 'critical';
 
@@ -18,6 +20,8 @@ export function StatCards({
   transactions: Transaction[];
   summary?: DashboardSummary;
 }) {
+  const [adjustOpen, setAdjustOpen] = useState(false);
+
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
@@ -69,6 +73,10 @@ export function StatCards({
   // O valor que veio de meses anteriores é, matematicamente, a diferença do saldo total para o resultado desse mês
   const carryoverBalance = availableTotal - incomeTotal + expenseTotal;
 
+  // Apply the invisible balance offset from the server
+  const balanceOffset = summary?.balanceOffset ?? 0;
+  availableTotal += balanceOffset;
+
   const fixedCostsRatio = expenseTotal > 0 ? Math.round((fixedCostsTotal / expenseTotal) * 100) : 0;
   const expenseOfIncomeRatio = incomeTotal > 0 ? Math.round((expenseTotal / incomeTotal) * 100) : 0;
 
@@ -81,24 +89,35 @@ export function StatCards({
         : "";
 
   return (
+    <>
     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-5">
       
-      {/* 1. DISPONÍVEL (Hero Card) */}
-      <div className="group col-span-1 md:col-span-6 lg:col-span-5 relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary/85 p-5 lg:p-6 text-primary-foreground shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+      {/* 1. DISPONÍVEL (Hero Card) — Clickable to adjust balance */}
+      <button
+        type="button"
+        onClick={() => setAdjustOpen(true)}
+        className="group col-span-1 md:col-span-6 lg:col-span-5 rounded-2xl bg-primary/70 backdrop-blur-md border border-white/30 dark:border-white/10 p-4 lg:p-5 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer text-center flex flex-col items-center justify-center min-h-[140px] relative overflow-hidden"
+      >
         {/* Abstract shapes for premium feel */}
-        <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 blur-2xl transition-transform group-hover:scale-125 duration-700" />
-        <div className="absolute -bottom-6 -left-6 h-28 w-28 rounded-full bg-black/10 blur-xl transition-transform group-hover:scale-125 duration-700" />
-        
-        <div className="relative z-10 flex flex-col h-full justify-center items-center text-center min-h-[140px] py-4">
+        <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 blur-2xl transition-transform group-hover:scale-125 duration-700 pointer-events-none" />
+        <div className="absolute -bottom-6 -left-6 h-28 w-28 rounded-full bg-black/10 blur-xl transition-transform group-hover:scale-125 duration-700 pointer-events-none" />
+
+        {/* Sync hint badge */}
+        <div className="absolute top-3 right-3 z-20 flex items-center gap-1 px-2 py-1 rounded-full bg-white/15 backdrop-blur-sm text-[10px] font-medium text-white/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 border border-white/10">
+          <RefreshCw className="h-2.5 w-2.5" />
+          Atualizar
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center justify-center w-full">
           <div className="flex items-center gap-2 mb-3">
-            <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md shadow-sm">
-              <Wallet className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-sm font-medium text-primary-foreground/90">Saldo Disponível</span>
+             <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md shadow-sm">
+               <Wallet className="h-4 w-4 text-white" />
+             </div>
+             <span className="text-sm font-medium text-primary-foreground/90">Saldo Disponível</span>
           </div>
-          
+
           <div className="flex flex-col items-center">
-            <p className="text-4xl lg:text-5xl font-extrabold tracking-tight tabular-nums drop-shadow-sm text-foreground dark:text-white">
+            <p className="text-4xl lg:text-5xl font-extrabold tracking-tight tabular-nums drop-shadow-sm text-white">
               {formatCurrencyBRL(availableTotal)}
             </p>
             {carryoverLabel && (
@@ -109,13 +128,13 @@ export function StatCards({
             )}
           </div>
         </div>
-      </div>
+      </button>
 
       {/* 2 & 3. RECEITA E DESPESAS (Stacked Column) */}
       <div className="col-span-1 md:col-span-6 lg:col-span-4 flex flex-col gap-4 lg:gap-5">
         
         {/* RECEITA */}
-        <div className="group flex-1 rounded-2xl bg-card border border-border/50 p-4 lg:p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+        <div className="group flex-1 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/70 dark:border-white/10 p-4 lg:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1">
            <div className="flex justify-between items-start mb-2">
              <div className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-full bg-success/15 flex items-center justify-center transition-colors group-hover:bg-success/20">
@@ -136,7 +155,7 @@ export function StatCards({
           const showRatio = incomeTotal > 0;
           
           return (
-            <div className="group flex-1 rounded-2xl bg-card border border-border/50 p-4 lg:p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+            <div className="group flex-1 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/70 dark:border-white/10 p-4 lg:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1">
               <div className="flex justify-between items-start mb-2 transition-colors duration-300">
                 <div className="flex items-center gap-2">
                   <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-300 ${
@@ -175,7 +194,7 @@ export function StatCards({
       </div>
 
       {/* 4. CUSTOS FIXOS */}
-      <div className="group col-span-1 md:col-span-12 lg:col-span-3 rounded-2xl bg-card border border-border/50 p-4 lg:p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between min-h-[140px]">
+      <div className="group col-span-1 md:col-span-12 lg:col-span-3 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/70 dark:border-white/10 p-4 lg:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between min-h-[140px]">
           <div>
             <div className="flex items-center gap-2 mb-4">
                <div className="h-8 w-8 rounded-full bg-blue-500/15 flex items-center justify-center transition-colors group-hover:bg-blue-500/20">
@@ -205,5 +224,13 @@ export function StatCards({
       </div>
 
     </div>
+
+    <BalanceAdjustSheet
+      open={adjustOpen}
+      onClose={() => setAdjustOpen(false)}
+      currentBalance={availableTotal}
+      currentOffset={balanceOffset}
+    />
+    </>
   );
 }

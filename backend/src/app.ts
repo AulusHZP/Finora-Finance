@@ -1,5 +1,5 @@
 import cors from "cors";
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import helmet from "helmet";
 import { env } from "./config/env";
 import { errorMiddleware } from "./middlewares/error.middleware";
@@ -16,7 +16,10 @@ app.use(helmet());
 
 // CORS Configuration
 const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+  origin: (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void
+  ) => {
     // Allow non-browser clients (curl, mobile apps, server-to-server)
     if (!origin) {
       callback(null, true);
@@ -24,7 +27,10 @@ const corsOptions = {
     }
 
     // Allow localhost in development
-    if (env.NODE_ENV === "development" && origin.startsWith("http://localhost")) {
+    if (
+      env.NODE_ENV === "development" &&
+      origin.startsWith("http://localhost")
+    ) {
       callback(null, true);
       return;
     }
@@ -38,18 +44,25 @@ const corsOptions = {
     // If no origins configured and in production, log warning but allow
     // This prevents 500 errors on preflight requests
     if (env.NODE_ENV === "production" && allowedOrigins.length === 0) {
-      console.warn(`[CORS] No CORS_ORIGIN configured in production. Allowing request from: ${origin}`);
+      console.warn(
+        `[CORS] No CORS_ORIGIN configured in production. Allowing request from: ${origin}`
+      );
       callback(null, true);
       return;
     }
 
-    callback(new Error(`Origin ${origin} not allowed by CORS`));
+    console.warn(`[CORS] Origin ${origin} not allowed by CORS`);
+    // Do not throw an error here — returning an error causes Express to send
+    // a 500 and no CORS headers. Instead, deny the CORS check so the browser
+    // will block the request client-side while the server responds normally.
+    callback(null, false);
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "Cache-Control"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   exposedHeaders: ["Content-Type", "Authorization"],
-  maxAge: 3600
+  maxAge: 86400,
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));

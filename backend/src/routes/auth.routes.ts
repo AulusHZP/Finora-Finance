@@ -4,7 +4,8 @@ import {
 	logoutController,
 	meController,
 	registerController,
-	updateProfileController
+	updateProfileController,
+	balanceOffsetController
 } from "../controllers/auth.controller";
 import { authMiddleware } from "../middlewares/auth.middleware";
 
@@ -14,6 +15,7 @@ authRoutes.post("/register", registerController);
 authRoutes.post("/login", loginController);
 authRoutes.get("/me", authMiddleware, meController);
 authRoutes.put("/profile", authMiddleware, updateProfileController);
+authRoutes.put("/balance-offset", authMiddleware, balanceOffsetController);
 authRoutes.post("/logout", authMiddleware, logoutController);
 
 export { authRoutes };

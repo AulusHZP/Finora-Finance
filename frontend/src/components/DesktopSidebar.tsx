@@ -1,7 +1,7 @@
-import { Home, ArrowRightLeft, Target, Upload, Settings } from "lucide-react";
+import { Home, ArrowRightLeft, Target, Upload, Settings, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Link } from "react-router-dom";
-import { getStoredUser } from "@/lib/auth";
+import { getStoredUser, logoutRequest, clearAuthSession } from "@/lib/auth";
 
 const navItems = [
   { to: "/", icon: Home, label: "Início" },
@@ -20,6 +20,17 @@ export function DesktopSidebar() {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  const handleLogout = async () => {
+    try {
+      await logoutRequest();
+    } catch (error) {
+      // Ignore errors on logout
+    } finally {
+      clearAuthSession();
+      window.location.href = "/auth";
+    }
+  };
 
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border h-screen sticky top-0 shrink-0">
@@ -67,6 +78,17 @@ export function DesktopSidebar() {
           </span>
           <span>Configurações</span>
         </Link>
+        
+        {/* Logout Button */}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-500 text-sm font-medium transition-all duration-200 hover:bg-red-500/10 text-left"
+        >
+          <span className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+            <LogOut className="h-4 w-4 flex-shrink-0" />
+          </span>
+          <span>Sair</span>
+        </button>
 
         {/* User Card */}
         <Link
