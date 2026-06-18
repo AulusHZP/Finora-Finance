@@ -28,7 +28,7 @@ model Transaction {
   type      String   // "income" or "expense"
   isFixed   Boolean  @default(false)
   categoryId String?
-  category   Category? @relation(fields: [categoryId], references: [id])
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   method    String
   date      DateTime
   createdAt DateTime @default(now())

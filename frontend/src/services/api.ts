@@ -81,6 +81,10 @@ const invalidateCache = (prefix: string) => {
   }
 };
 
+export const clearApiCache = () => {
+  apiCache.clear();
+};
+
 const getAuthToken = (): string | null => {
   if (typeof localStorage === "undefined") {
     return null;
@@ -129,14 +133,26 @@ const getCachedOrFetch = async <T>(
   return promise;
 };
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
 const requestJson = async <T>(url: string, init: RequestInit, token: string): Promise<T> => {
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${token}`);
 
-  const response = await fetch(url, {
-    ...init,
-    headers
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(url, { ...init, headers, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("A requisição demorou demais. Verifique sua conexão e tente novamente.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const responseText = await response.text();
   const responseData = responseText ? JSON.parse(responseText) : null;

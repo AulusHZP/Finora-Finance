@@ -75,17 +75,6 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
         ? `${description} (${customCategory.trim()})`
         : description;
 
-      console.log("Submitting transaction:", {
-        title: finalTitle,
-        amount: parsedAmount,
-        type,
-        isFixed,
-        category: finalCategory,
-        method,
-        date,
-        installmentCount: isInstallment ? parsedInstallmentCount : 1
-      });
-
       await transactionAPI.createTransaction({
         title: finalTitle,
         amount: parsedAmount,
@@ -113,7 +102,6 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
       onClose();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Erro ao adicionar transação";
-      console.error("Transaction submission error:", errorMsg, err);
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -167,7 +155,7 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
               value={category}
               onChange={(value) => {
                 setCategory(value);
-                if (value !== "Outros") {
+                if (value !== "Outro") {
                   setCustomCategory("");
                 }
               }}

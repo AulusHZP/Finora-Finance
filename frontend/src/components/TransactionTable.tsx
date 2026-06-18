@@ -70,8 +70,8 @@ export function TransactionTable({
         setLoading(true);
         const data = await transactionAPI.getTransactions();
         setTransactions(data);
-      } catch (error) {
-        console.error("Failed to load transactions:", error);
+      } catch {
+        // error handled by parent components
       } finally {
         setLoading(false);
       }

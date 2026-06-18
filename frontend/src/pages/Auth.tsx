@@ -6,9 +6,7 @@ import { SignupForm } from "@/components/SignupForm";
 import {
   getStoredToken,
   loginRequest,
-  meRequest,
   registerRequest,
-  setStoredUser,
   storeAuthSession
 } from "@/lib/auth";
 
@@ -19,30 +17,22 @@ export function AuthPage() {
   useEffect(() => {
     if (getStoredToken()) {
       navigate("/");
+      return;
     }
+    // Preload the dashboard chunk while the user fills in the form
+    void import("./Index.tsx");
   }, [navigate]);
-
-  const finishAuth = async () => {
-    const token = getStoredToken();
-    if (!token) {
-      throw new Error("Sessao invalida");
-    }
-
-    const user = await meRequest();
-    setStoredUser(user);
-    navigate("/");
-  };
 
   const handleLogin = async (email: string, password: string) => {
     const data = await loginRequest({ email, password });
     storeAuthSession(data);
-    await finishAuth();
+    navigate("/");
   };
 
   const handleSignup = async (name: string, email: string, password: string) => {
     const data = await registerRequest({ name, email, password });
     storeAuthSession(data);
-    await finishAuth();
+    navigate("/");
   };
 
   return (

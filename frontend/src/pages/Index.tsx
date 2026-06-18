@@ -153,7 +153,17 @@ const Index = () => {
         </button>
       </div>
 
-      {loadError && <p className="text-xs text-destructive mb-4">{loadError}</p>}
+      {loadError && (
+        <div className="flex items-center gap-3 mb-4 p-3 bg-destructive/10 rounded-lg">
+          <p className="text-xs text-destructive flex-1">{loadError}</p>
+          <button
+            onClick={loadDashboardData}
+            className="text-xs font-medium text-destructive underline hover:no-underline shrink-0"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
       
       {loading ? (
         <DashboardSkeleton />

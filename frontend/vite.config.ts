@@ -11,12 +11,17 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
     proxy: {
-      // Proxy local `/api/*` requests to the local backend
+      // Proxy local `/api/*` requests to the hosted backend to avoid CORS during development
       // Usage: set `VITE_API_URL=/api` in `.env.local` and frontend will call `/api/...`
       "/api": {
-        target: "http://localhost:4000",
+        target: "https://finora-finance-h6z4.onrender.com",
         changeOrigin: true,
-        secure: false,
+        secure: true,
+        // Force headers the backend expects (prevents Cloudflare/Render rejecting proxied requests)
+        headers: {
+          Origin: "https://finora-finance-h6z4.onrender.com",
+          Host: "finora-finance-h6z4.onrender.com",
+        },
         rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { goalAPI } from "@/services/api";
+import { goalAPI, type CreateGoalPayload } from "@/services/api";
 
 export interface Goal {
   id: string;
@@ -19,12 +19,7 @@ export function useGoals() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load goals from backend on mount
-  useEffect(() => {
-    loadGoals();
-  }, []);
-
-  const loadGoals = async () => {
+  const loadGoals = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -32,17 +27,19 @@ export function useGoals() {
       setGoals(data);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro ao carregar objetivos";
-      console.error("Error loading goals:", message);
       setError(message);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadGoals();
+  }, [loadGoals]);
 
   const createGoal = useCallback(
     async (goal: Omit<Goal, "id" | "createdAt" | "userId" | "updatedAt">) => {
       try {
-        console.log("Creating goal:", goal);
         const newGoal = await goalAPI.createGoal({
           title: goal.title,
           current: goal.current,
@@ -55,7 +52,6 @@ export function useGoals() {
         return newGoal;
       } catch (err) {
         const message = err instanceof Error ? err.message : "Erro ao criar objetivo";
-        console.error("Error creating goal:", message);
         setError(message);
         throw err;
       }
@@ -69,14 +65,13 @@ export function useGoals() {
       updates: Partial<Omit<Goal, "id" | "createdAt" | "userId" | "updatedAt">>
     ) => {
       try {
-        const updatedGoal = await goalAPI.updateGoal(id, updates as any);
+        const updatedGoal = await goalAPI.updateGoal(id, updates as Partial<CreateGoalPayload>);
         setGoals((prev) =>
           prev.map((goal) => (goal.id === id ? updatedGoal : goal))
         );
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Erro ao atualizar objetivo";
-        console.error("Error updating goal:", message);
         setError(message);
         throw err;
       }
@@ -91,7 +86,6 @@ export function useGoals() {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Erro ao deletar objetivo";
-      console.error("Error deleting goal:", message);
       setError(message);
       throw err;
     }

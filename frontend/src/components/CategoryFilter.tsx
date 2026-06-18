@@ -11,14 +11,18 @@ export function CategoryFilter({ value, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setFetchError(false);
     categorizeAPI.getCategories().then((data) => {
       if (!cancelled) setCategories(data ?? []);
-    }).catch(() => {}).finally(() => {
+    }).catch(() => {
+      if (!cancelled) setFetchError(true);
+    }).finally(() => {
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
@@ -33,8 +37,8 @@ export function CategoryFilter({ value, onChange }: Props) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const expenseCategories = categories.filter((c) => (c as any).type === "expense");
-  const incomeCategories  = categories.filter((c) => (c as any).type === "income");
+  const expenseCategories = categories.filter((c) => c.type === "expense");
+  const incomeCategories  = categories.filter((c) => c.type === "income");
 
   const handleSelect = (name: string) => {
     onChange(value === name ? "" : name);
@@ -70,6 +74,8 @@ export function CategoryFilter({ value, onChange }: Props) {
         <div className="absolute left-0 top-full mt-1.5 z-50 w-64 bg-card border border-border rounded-xl shadow-xl overflow-hidden">
           {loading ? (
             <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>
+          ) : fetchError ? (
+            <p className="text-xs text-destructive text-center py-4">Erro ao carregar categorias</p>
           ) : (
             <div className="max-h-72 overflow-y-auto scrollbar-thin py-1">
               {/* All option */}

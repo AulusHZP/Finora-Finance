@@ -11,15 +11,19 @@ interface Props {
 export function CategoryPicker({ value, onChange, type }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let mounted = true;
+    setFetchError(false);
     categorizeAPI.getCategories()
       .then((data) => {
         if (mounted) setCategories(data ?? []);
       })
-      .catch((err) => console.error("Failed to fetch categories:", err));
+      .catch(() => {
+        if (mounted) setFetchError(true);
+      });
     return () => { mounted = false; };
   }, []);
 
@@ -36,7 +40,7 @@ export function CategoryPicker({ value, onChange, type }: Props) {
   const filtered = useMemo(() => {
     let result = categories;
     if (type) {
-      result = categories.filter((c) => (c as any).type === type);
+      result = categories.filter((c) => c.type === type);
     }
     // Filter out "Outro" from the dynamic list since we add it statically at the bottom
     return result.filter((c) => c.name !== "Outro" && c.name !== "Outros");
@@ -62,7 +66,9 @@ export function CategoryPicker({ value, onChange, type }: Props) {
 
       {isOpen && (
         <div className="absolute z-50 w-full mt-1.5 bg-card border border-border rounded-xl shadow-lg max-h-64 overflow-y-auto py-1.5 scrollbar-thin">
-          {filtered.length === 0 ? (
+          {fetchError ? (
+            <div className="px-3 py-3 text-sm text-destructive text-center">Erro ao carregar categorias</div>
+          ) : filtered.length === 0 ? (
             <div className="px-3 py-3 text-sm text-muted-foreground text-center">Nenhuma categoria encontrada</div>
           ) : (
             filtered.map((cat) => (

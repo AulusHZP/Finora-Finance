@@ -31,10 +31,11 @@ const Transactions = () => {
   const loadTransactions = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await transactionAPI.getTransactions();
       setTransactionList(data);
     } catch (err) {
-      console.error("Falha ao carregar transações:", err);
+      setError(err instanceof Error ? err.message : "Falha ao carregar transações");
     } finally {
       setLoading(false);
     }

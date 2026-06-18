@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/config/api";
+import { clearApiCache } from "@/services/api";
 
 export type AuthUser = {
   id: string;
@@ -139,4 +140,5 @@ export const getStoredUser = (): AuthUser | null => {
 export const clearAuthSession = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  clearApiCache();
 };

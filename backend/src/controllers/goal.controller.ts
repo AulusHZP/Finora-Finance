@@ -40,20 +40,13 @@ export const createGoalController = async (
   next: NextFunction
 ) => {
   try {
-    console.log("Creating goal, body:", JSON.stringify(req.body, null, 2));
-
     const userId = req.user?.id;
-    console.log("User ID from auth:", userId);
 
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     const payload = createGoalSchema.parse(req.body);
-    console.log("Validated payload:", JSON.stringify(payload, null, 2));
 
     const goal = await createGoal({
       userId,
@@ -67,10 +60,8 @@ export const createGoalController = async (
 
     invalidateDashboardCache(userId);
 
-    console.log("Goal created:", JSON.stringify(goal, null, 2));
     return res.status(201).json(ok("Goal created successfully", goal));
   } catch (error) {
-    console.error("Error in createGoalController:", error);
     return next(error);
   }
 };

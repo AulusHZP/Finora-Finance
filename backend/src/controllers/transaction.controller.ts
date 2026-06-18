@@ -7,7 +7,8 @@ import {
   getTransactionsByUserId,
   getTransactionById,
   updateTransaction,
-  deleteTransaction
+  deleteTransaction,
+  getCategories
 } from "../services/transaction.service";
 import { invalidateDashboardCache } from "../services/dashboard.service";
 import { ok } from "../utils/http";
@@ -52,51 +53,49 @@ const importTransactionsSchema = z.object({
 
 export const createTransactionController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    console.log("Creating transaction, body:", JSON.stringify(req.body, null, 2));
-    
     const userId = req.user?.id;
-    console.log("User ID from auth:", userId);
 
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
-      });
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     const payload = createTransactionSchema.parse(req.body);
-    console.log("Validated payload:", JSON.stringify(payload, null, 2));
     const installmentCount = payload.installmentCount ?? 1;
     const shouldCreateInstallments = payload.method === "Crédito" && payload.type === "expense" && installmentCount > 1;
 
-    const transaction = shouldCreateInstallments
-      ? await createInstallmentTransactions({
-          userId,
-          title: payload.title,
-          totalAmount: payload.amount,
-          type: payload.type,
-          isFixed: payload.isFixed ?? false,
-          category: payload.category,
-          method: payload.method,
-          date: new Date(payload.date),
-          installmentCount
-        })
-      : await createTransaction({
-          userId,
-          title: payload.title,
-          amount: payload.amount,
-          type: payload.type,
-          isFixed: payload.isFixed ?? false,
-          category: payload.category,
-          method: payload.method,
-          date: new Date(payload.date)
-        });
-
-    console.log("Transaction created:", JSON.stringify(transaction, null, 2));
     invalidateDashboardCache(userId);
+
+    if (shouldCreateInstallments) {
+      const transactions = await createInstallmentTransactions({
+        userId,
+        title: payload.title,
+        totalAmount: payload.amount,
+        type: payload.type,
+        isFixed: payload.isFixed ?? false,
+        category: payload.category,
+        method: payload.method,
+        date: new Date(payload.date),
+        installmentCount
+      });
+      return res.status(201).json(ok(`${transactions.length} parcelas criadas com sucesso`, {
+        transactions,
+        count: transactions.length
+      }));
+    }
+
+    const transaction = await createTransaction({
+      userId,
+      title: payload.title,
+      amount: payload.amount,
+      type: payload.type,
+      isFixed: payload.isFixed ?? false,
+      category: payload.category,
+      method: payload.method,
+      date: new Date(payload.date)
+    });
+
     return res.status(201).json(ok("Transaction created successfully", transaction));
   } catch (error) {
-    console.error("Error in createTransactionController:", error);
     return next(error);
   }
 };
@@ -149,7 +148,7 @@ const createInstallmentTransactions = async (input: CreateInstallmentTransaction
     created.push(transaction);
   }
 
-  return created[0];
+  return created;
 };
 
 export const getTransactionsController = async (req: Request, res: Response, next: NextFunction) => {
@@ -246,8 +245,6 @@ export const getTransactionController = async (req: Request, res: Response, next
   }
 };
 
-import { getCategories } from "../services/transaction.service";
-
 export const getCategoriesController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const categories = await getCategories();
@@ -270,7 +267,15 @@ export const updateTransactionController = async (req: Request, res: Response, n
     }
 
     const payload = updateTransactionSchema.parse(req.body);
-    const data: any = {};
+    const data: {
+      title?: string;
+      amount?: number;
+      type?: "income" | "expense";
+      isFixed?: boolean;
+      category?: string;
+      method?: string;
+      date?: Date;
+    } = {};
 
     if (payload.title) data.title = payload.title;
     if (payload.amount) data.amount = payload.amount;
