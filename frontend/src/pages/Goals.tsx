@@ -4,7 +4,7 @@ import { CreateGoalDialog } from "@/components/CreateGoalDialog";
 import { GoalsList } from "@/components/GoalsList";
 import { GoalDetails } from "@/components/GoalDetails";
 import { useGoals } from "@/hooks/useGoals";
-import type { Goal } from "@/hooks/useGoals";
+import type { CreateGoalPayload, Goal } from "@/hooks/useGoals";
 import { Plus, Target } from "lucide-react";
 
 const Goals = () => {
@@ -15,7 +15,7 @@ const Goals = () => {
 
   const selectedGoal = goals.find((g) => g.id === selectedGoalId) || null;
 
-  const handleCreateGoal = async (goalData: Omit<Goal, "id" | "createdAt">) => {
+  const handleCreateGoal = async (goalData: CreateGoalPayload) => {
     const newGoal = await createGoal(goalData);
     setSelectedGoalId(newGoal.id);
     setCreateDialogOpen(false);
@@ -26,7 +26,7 @@ const Goals = () => {
     setCreateDialogOpen(true);
   };
 
-  const handleUpdateGoal = async (goalData: Omit<Goal, "id" | "createdAt">) => {
+  const handleUpdateGoal = async (goalData: CreateGoalPayload) => {
     if (editingGoal) {
       await updateGoal(editingGoal.id, goalData);
       setEditingGoal(null);
@@ -34,7 +34,7 @@ const Goals = () => {
     }
   };
 
-  const handleSaveGoal = async (goalData: Omit<Goal, "id" | "createdAt">) => {
+  const handleSaveGoal = async (goalData: CreateGoalPayload) => {
     if (editingGoal) {
       await handleUpdateGoal(goalData);
     } else {

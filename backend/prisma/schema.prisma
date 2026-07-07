@@ -8,49 +8,105 @@ datasource db {
 }
 
 model User {
-  id              String        @id @default(uuid())
-  name            String
-  email           String        @unique
-  password        String
-  balanceOffset   Float         @default(0)
-  transactions    Transaction[]
-  goals           Goal[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id                    String                 @id @default(uuid())
+  name                  String
+  email                 String                 @unique
+  password              String
+  balanceOffset         Float                  @default(0)
+  creditCardClosingDay  Int?                   // dia do mês em que a fatura fecha (null = recurso desligado)
+  transactions          Transaction[]
+  goals                 Goal[]
+  budgets               Budget[]
+  recurringTransactions RecurringTransaction[]
+  refreshTokens         RefreshToken[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Transaction {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  amount    Float
-  type      String   // "income" or "expense"
-  isFixed   Boolean  @default(false)
-  categoryId String?
-  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  method    String
-  date      DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String                @id @default(uuid())
+  userId                 String
+  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title                  String
+  amount                 Float
+  type                   String                // "income" or "expense"
+  isFixed                Boolean               @default(false)
+  categoryId             String?
+  category               Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recurringTransactionId String?
+  recurringTransaction   RecurringTransaction? @relation(fields: [recurringTransactionId], references: [id], onDelete: SetNull)
+  method                 String
+  date                   DateTime
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
 
   @@index([userId])
   @@index([userId, date])
 }
 
 model Category {
-  id          String        @id @default(uuid())
-  name        String
-  type        String        @default("expense") // "income" or "expense"
-  emoji       String        @default("💰")
-  parentId    String?
-  parent      Category?     @relation("SubCategories", fields: [parentId], references: [id])
-  subcategories Category[]  @relation("SubCategories")
-  transactions Transaction[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id                    String                 @id @default(uuid())
+  name                  String
+  type                  String                 @default("expense") // "income" or "expense"
+  emoji                 String                 @default("💰")
+  parentId              String?
+  parent                Category?              @relation("SubCategories", fields: [parentId], references: [id])
+  subcategories         Category[]             @relation("SubCategories")
+  transactions          Transaction[]
+  budgets               Budget[]
+  recurringTransactions RecurringTransaction[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
 
   @@unique([name, parentId])
+}
+
+model Budget {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId   String
+  category     Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  monthlyLimit Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, categoryId])
+  @@index([userId])
+}
+
+model RecurringTransaction {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  amount       Float
+  type         String        // "income" or "expense"
+  isFixed      Boolean       @default(true)
+  categoryId   String?
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  method       String
+  dayOfMonth   Int           // dia-alvo do mês (clampado para meses curtos)
+  nextRunDate  DateTime      // próxima ocorrência a materializar
+  endDate      DateTime?
+  active       Boolean       @default(true)
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([userId, active])
 }
 
 model Goal {

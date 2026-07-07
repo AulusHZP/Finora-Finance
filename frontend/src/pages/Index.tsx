@@ -6,11 +6,12 @@ import { TransactionTable } from "@/components/TransactionTable";
 import { DashboardGoalsWidget } from "@/components/DashboardGoalsWidget";
 import { DashboardInsights } from "@/components/DashboardInsights";
 import { PaymentMethodBreakdown } from "@/components/PaymentMethodBreakdown";
+import { BudgetsCard } from "@/components/BudgetsCard";
+import { CreditCardInvoiceCard } from "@/components/CreditCardInvoiceCard";
 import { FAB } from "@/components/FAB";
 import { AddTransactionSheet } from "@/components/AddTransactionSheet";
 import { ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { formatCurrencyBRL } from "@/lib/currency";
 import { dashboardAPI, type DashboardData, type Transaction } from "@/services/api";
 
 const DashboardSkeleton = () => (
@@ -132,9 +133,8 @@ const Index = () => {
     };
   }, [loadDashboardData]);
 
-  const transactions = dashboard?.transactions ?? [];
+  const transactions = useMemo(() => dashboard?.transactions ?? [], [dashboard]);
   const goals = dashboard?.goals ?? [];
-  const availableTotal = dashboard?.summary.availableBalance ?? 0;
   const categoryData = useMemo(() => buildCategoryData(transactions), [transactions]);
 
   return (
@@ -170,7 +170,7 @@ const Index = () => {
       ) : (
         <div className="space-y-6 lg:space-y-8 pb-12">
           {/* ROW 1: Highlight Cards */}
-          <StatCards transactions={transactions} summary={dashboard?.summary} />
+          <StatCards summary={dashboard?.summary} />
 
           {/* ROW 2: Chart & Goals */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
@@ -204,8 +204,12 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Right Column: Insights & Payments */}
+            {/* Right Column: Budgets, Insights & Payments */}
             <div className="lg:col-span-4 flex flex-col gap-5 lg:gap-6">
+              <BudgetsCard budgets={dashboard?.budgets ?? []} />
+              {dashboard?.summary.creditCard && (
+                <CreditCardInvoiceCard creditCard={dashboard.summary.creditCard} />
+              )}
               <DashboardInsights transactions={transactions} goals={goals} />
               <PaymentMethodBreakdown transactions={transactions} />
             </div>

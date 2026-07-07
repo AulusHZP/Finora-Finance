@@ -11,7 +11,10 @@ import {
   getCategories
 } from "../services/transaction.service";
 import { invalidateDashboardCache } from "../services/dashboard.service";
+import { materializeDueRecurringTransactions } from "../services/recurring.service";
+import { addMonthsClamped } from "../utils/dates";
 import { ok } from "../utils/http";
+import { requireUserId } from "../utils/request";
 
 const createTransactionSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(255),
@@ -53,17 +56,11 @@ const importTransactionsSchema = z.object({
 
 export const createTransactionController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
+    const userId = requireUserId(req);
 
     const payload = createTransactionSchema.parse(req.body);
     const installmentCount = payload.installmentCount ?? 1;
     const shouldCreateInstallments = payload.method === "Crédito" && payload.type === "expense" && installmentCount > 1;
-
-    invalidateDashboardCache(userId);
 
     if (shouldCreateInstallments) {
       const transactions = await createInstallmentTransactions({
@@ -77,6 +74,7 @@ export const createTransactionController = async (req: Request, res: Response, n
         date: new Date(payload.date),
         installmentCount
       });
+      invalidateDashboardCache(userId);
       return res.status(201).json(ok(`${transactions.length} parcelas criadas com sucesso`, {
         transactions,
         count: transactions.length
@@ -93,6 +91,8 @@ export const createTransactionController = async (req: Request, res: Response, n
       method: payload.method,
       date: new Date(payload.date)
     });
+
+    invalidateDashboardCache(userId);
 
     return res.status(201).json(ok("Transaction created successfully", transaction));
   } catch (error) {
@@ -123,12 +123,6 @@ const splitAmountInCents = (totalAmount: number, installmentCount: number) => {
   });
 };
 
-const addMonths = (date: Date, monthsToAdd: number) => {
-  const nextDate = new Date(date);
-  nextDate.setMonth(nextDate.getMonth() + monthsToAdd);
-  return nextDate;
-};
-
 const createInstallmentTransactions = async (input: CreateInstallmentTransactionsInput) => {
   const installmentAmounts = splitAmountInCents(input.totalAmount, input.installmentCount);
   const created = [];
@@ -142,7 +136,7 @@ const createInstallmentTransactions = async (input: CreateInstallmentTransaction
       isFixed: input.isFixed,
       category: input.category,
       method: input.method,
-      date: addMonths(input.date, installmentIndex)
+      date: addMonthsClamped(input.date, installmentIndex)
     });
 
     created.push(transaction);
@@ -153,13 +147,11 @@ const createInstallmentTransactions = async (input: CreateInstallmentTransaction
 
 export const getTransactionsController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const userId = requireUserId(req);
 
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
-      });
+    const materialized = await materializeDueRecurringTransactions(userId);
+    if (materialized > 0) {
+      invalidateDashboardCache(userId);
     }
 
     const transactions = await getTransactionsByUserId(userId);
@@ -172,14 +164,7 @@ export const getTransactionsController = async (req: Request, res: Response, nex
 
 export const clearImportedTransactionsController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
-      });
-    }
+    const userId = requireUserId(req);
 
     const result = await deleteImportedTransactionsByUser(userId);
 
@@ -193,14 +178,7 @@ export const clearImportedTransactionsController = async (req: Request, res: Res
 
 export const importTransactionsController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
-      });
-    }
+    const userId = requireUserId(req);
 
     const payload = importTransactionsSchema.parse(req.body);
 
@@ -227,15 +205,8 @@ export const importTransactionsController = async (req: Request, res: Response, 
 
 export const getTransactionController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const userId = requireUserId(req);
     const { id } = req.params as { id: string };
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
-      });
-    }
 
     const transaction = await getTransactionById(id, userId);
 
@@ -256,15 +227,8 @@ export const getCategoriesController = async (req: Request, res: Response, next:
 
 export const updateTransactionController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const userId = requireUserId(req);
     const { id } = req.params as { id: string };
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
-      });
-    }
 
     const payload = updateTransactionSchema.parse(req.body);
     const data: {
@@ -297,15 +261,8 @@ export const updateTransactionController = async (req: Request, res: Response, n
 
 export const deleteTransactionController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
+    const userId = requireUserId(req);
     const { id } = req.params as { id: string };
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
-      });
-    }
 
     await deleteTransaction(id, userId);
 

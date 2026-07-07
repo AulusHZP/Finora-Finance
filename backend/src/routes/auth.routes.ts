@@ -4,6 +4,7 @@ import {
 	loginController,
 	logoutController,
 	meController,
+	refreshController,
 	registerController,
 	updateProfileController,
 	balanceOffsetController
@@ -22,6 +23,7 @@ const authLimiter = rateLimit({
 
 authRoutes.post("/register", authLimiter, registerController);
 authRoutes.post("/login", authLimiter, loginController);
+authRoutes.post("/refresh", authLimiter, refreshController);
 authRoutes.get("/me", authMiddleware, meController);
 authRoutes.put("/profile", authMiddleware, updateProfileController);
 authRoutes.put("/balance-offset", authMiddleware, balanceOffsetController);

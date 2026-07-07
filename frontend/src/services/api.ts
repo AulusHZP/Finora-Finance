@@ -37,20 +37,66 @@ export interface CreateTransactionPayload {
 
 export type ImportTransactionPayload = CreateTransactionPayload;
 
+export interface CreditCardSummary {
+  closingDay: number;
+  currentInvoiceTotal: number;
+  nextInvoiceTotal: number;
+  currentClosesOn: string;
+}
+
 export interface DashboardSummary {
   incomeTotal: number;
   expenseTotal: number;
   availableBalance: number;
+  spendableBalance: number;
+  goalsReserved: number;
   fixedCostsTotal: number;
   expenseOfIncomeRatio: number;
   fixedCostsRatio: number;
   carryoverBalance: number;
   balanceOffset: number;
+  creditCard: CreditCardSummary | null;
+}
+
+export interface BudgetStatus {
+  id: string;
+  categoryId: string;
+  categoryName: string;
+  emoji: string;
+  monthlyLimit: number;
+  spent: number;
+}
+
+export interface RecurringTransaction {
+  id: string;
+  title: string;
+  amount: number;
+  type: "income" | "expense";
+  isFixed: boolean;
+  category: string;
+  method: string;
+  dayOfMonth: number;
+  nextRunDate: string;
+  endDate?: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRecurringPayload {
+  title: string;
+  amount: number;
+  type: "income" | "expense";
+  isFixed?: boolean;
+  category: string;
+  method: string;
+  date: string;
 }
 
 export interface DashboardData {
   transactions: Transaction[];
   goals: Goal[];
+  budgets: BudgetStatus[];
   summary: DashboardSummary;
   generatedAt: string;
 }
@@ -134,8 +180,58 @@ const getCachedOrFetch = async <T>(
 };
 
 const REQUEST_TIMEOUT_MS = 15_000;
+const REFRESH_TOKEN_KEY = "finora_refresh_token";
 
-const requestJson = async <T>(url: string, init: RequestInit, token: string): Promise<T> => {
+const clearSessionAndRedirect = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem("finora_user");
+  apiCache.clear();
+  if (typeof window !== "undefined" && !window.location.pathname.startsWith("/auth")) {
+    window.location.assign("/auth");
+  }
+};
+
+let refreshInFlight: Promise<string | null> | null = null;
+
+/** Single-flight refresh: concurrent 401s share one /auth/refresh call. */
+const tryRefreshSession = (): Promise<string | null> => {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+      if (!refreshToken) return null;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken })
+        });
+
+        if (!response.ok) return null;
+
+        const body = (await response.json()) as { data?: { token?: string; refreshToken?: string } };
+        if (!body.data?.token) return null;
+
+        localStorage.setItem(TOKEN_KEY, body.data.token);
+        if (body.data.refreshToken) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, body.data.refreshToken);
+        }
+
+        return body.data.token;
+      } catch {
+        return null;
+      }
+    })();
+    refreshInFlight.finally(() => {
+      refreshInFlight = null;
+    });
+  }
+
+  return refreshInFlight;
+};
+
+const fetchJson = async (url: string, init: RequestInit, token: string) => {
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${token}`);
 
@@ -156,12 +252,37 @@ const requestJson = async <T>(url: string, init: RequestInit, token: string): Pr
 
   const responseText = await response.text();
   const responseData = responseText ? JSON.parse(responseText) : null;
+  return { response, responseData };
+};
+
+const requestJson = async <T>(url: string, init: RequestInit, token: string): Promise<T> => {
+  let { response, responseData } = await fetchJson(url, init, token);
+
+  // Expired access token: refresh once and retry the original request.
+  if (response.status === 401) {
+    const refreshedToken = await tryRefreshSession();
+    if (refreshedToken) {
+      ({ response, responseData } = await fetchJson(url, init, refreshedToken));
+    }
+  }
+
+  if (response.status === 401) {
+    clearSessionAndRedirect();
+    throw new Error("Sessão expirada. Faça login novamente.");
+  }
 
   if (!response.ok) {
     throw new Error(responseData?.message || `Request failed with status ${response.status}`);
   }
 
   return responseData as T;
+};
+
+/** Authenticated JSON request against the API — shared with lib/auth. */
+export const authorizedJson = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
+  const token = getAuthToken();
+  if (!token) throw new Error("Não autenticado");
+  return requestJson<T>(`${API_BASE_URL}${path}`, init, token);
 };
 
 const serializeTransactionPayload = (payload: CreateTransactionPayload) => ({
@@ -183,7 +304,7 @@ const invalidateDashboardData = () => {
 };
 
 export const categorizeAPI = {
-  async getCategories(): Promise<any[]> {
+  async getCategories(): Promise<Category[]> {
     const token = getAuthToken();
     if (!token) throw new Error("Não autenticado");
 
@@ -359,6 +480,23 @@ export const goalAPI = {
     });
   },
 
+  async contribute(id: string, amount: number): Promise<Goal> {
+    const token = getAuthToken();
+    if (!token) throw new Error("Não autenticado");
+
+    const responseData = await requestJson<{ data: Goal }>(`${API_BASE_URL}/goals/${id}/contribute`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ amount })
+    }, token);
+
+    invalidateDashboardData();
+    notifyTransactionsUpdated();
+    return responseData.data;
+  },
+
   async updateGoal(id: string, payload: Partial<CreateGoalPayload>): Promise<Goal> {
     const token = getAuthToken();
     if (!token) throw new Error("Não autenticado");
@@ -409,6 +547,70 @@ export const dashboardAPI = {
 
       return data.data.dashboard;
     }, 15_000);
+  }
+};
+
+export const budgetAPI = {
+  async upsert(categoryId: string, monthlyLimit: number): Promise<void> {
+    await authorizedJson(`/budgets`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoryId, monthlyLimit })
+    });
+
+    invalidateCache("dashboard");
+    notifyTransactionsUpdated();
+  },
+
+  async remove(id: string): Promise<void> {
+    await authorizedJson(`/budgets/${id}`, { method: "DELETE" });
+
+    invalidateCache("dashboard");
+    notifyTransactionsUpdated();
+  }
+};
+
+export const recurringAPI = {
+  async list(): Promise<RecurringTransaction[]> {
+    const data = await authorizedJson<{ data: { recurring: RecurringTransaction[] } }>(`/recurring`, {
+      method: "GET"
+    });
+    return data.data.recurring;
+  },
+
+  async create(payload: CreateRecurringPayload): Promise<RecurringTransaction> {
+    const data = await authorizedJson<{ data: { recurring: RecurringTransaction } }>(`/recurring`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...payload,
+        // Noon UTC keeps the calendar day stable across timezones
+        date: new Date(`${payload.date}T12:00:00Z`).toISOString()
+      })
+    });
+
+    invalidateDashboardData();
+    notifyTransactionsUpdated();
+    return data.data.recurring;
+  },
+
+  async setActive(id: string, active: boolean): Promise<RecurringTransaction> {
+    const data = await authorizedJson<{ data: RecurringTransaction }>(`/recurring/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active })
+    });
+
+    invalidateDashboardData();
+    notifyTransactionsUpdated();
+    return data.data;
+  },
+
+  async remove(id: string): Promise<void> {
+    await authorizedJson(`/recurring/${id}`, { method: "DELETE" });
+
+    invalidateDashboardData();
+    notifyTransactionsUpdated();
   }
 };
 

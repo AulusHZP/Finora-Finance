@@ -9,6 +9,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(10, "JWT_SECRET must have at least 10 characters"),
   JWT_EXPIRES_IN: z.string().default("1d"),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().min(1).max(365).default(30),
   BCRYPT_SALT_ROUNDS: z.coerce.number().min(8).max(15).default(12),
   CORS_ORIGIN: z.string().default("http://localhost:8080,http://localhost:8081")
 });

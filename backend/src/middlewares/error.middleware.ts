@@ -6,6 +6,18 @@ type AppError = Error & {
   statusCode?: number;
 };
 
+const SENSITIVE_BODY_FIELDS = ["password", "senha", "token", "currentPassword", "newPassword"];
+
+const redactBody = (body: unknown): unknown => {
+  if (!body || typeof body !== "object") return body;
+
+  const redacted: Record<string, unknown> = { ...(body as Record<string, unknown>) };
+  for (const field of SENSITIVE_BODY_FIELDS) {
+    if (field in redacted) redacted[field] = "<redacted>";
+  }
+  return redacted;
+};
+
 export const errorMiddleware = (err: AppError, req: Request, res: Response, _next: NextFunction) => {
   // Log error with useful request context to help debugging in production
   try {
@@ -21,7 +33,7 @@ export const errorMiddleware = (err: AppError, req: Request, res: Response, _nex
       path: req.originalUrl,
       method: req.method,
       headers: safeHeaders,
-      body: req.body,
+      body: redactBody(req.body),
     });
   } catch (logErr) {
     console.error("Failed to log error context", logErr);
