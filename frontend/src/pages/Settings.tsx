@@ -16,6 +16,7 @@ const SettingsPage = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [currency, setCurrency] = useState("BRL (R$)");
+  const [closingDay, setClosingDay] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -26,12 +27,14 @@ const SettingsPage = () => {
         if (cachedUser) {
           setName(cachedUser.name);
           setEmail(cachedUser.email);
+          setClosingDay(cachedUser.creditCardClosingDay ? String(cachedUser.creditCardClosingDay) : "");
         }
 
         const user = await meRequest();
         setStoredUser(user);
         setName(user.name);
         setEmail(user.email);
+        setClosingDay(user.creditCardClosingDay ? String(user.creditCardClosingDay) : "");
       } catch {
         clearAuthSession();
         navigate("/auth");
@@ -42,14 +45,22 @@ const SettingsPage = () => {
   }, [navigate]);
 
   const handleSaveProfile = async () => {
+    const parsedClosingDay = closingDay.trim() ? Number.parseInt(closingDay, 10) : null;
+
+    if (parsedClosingDay !== null && (!Number.isInteger(parsedClosingDay) || parsedClosingDay < 1 || parsedClosingDay > 31)) {
+      setMessage("O dia de fechamento da fatura deve estar entre 1 e 31");
+      return;
+    }
+
     try {
       setLoading(true);
       setMessage(null);
 
-      const updated = await updateProfileRequest({ name, email });
+      const updated = await updateProfileRequest({ name, email, creditCardClosingDay: parsedClosingDay });
       setStoredUser(updated);
       setName(updated.name);
       setEmail(updated.email);
+      setClosingDay(updated.creditCardClosingDay ? String(updated.creditCardClosingDay) : "");
       setMessage("Perfil atualizado com sucesso");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Falha ao atualizar perfil";
@@ -137,10 +148,29 @@ const SettingsPage = () => {
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="w-full px-4 py-3 bg-card border-2 border-border hover:border-primary/50 rounded-xl text-sm text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all font-medium appearance-none cursor-pointer"
+                disabled
+                className="w-full px-4 py-3 bg-card border-2 border-border rounded-xl text-sm text-muted-foreground focus:outline-none transition-all font-medium appearance-none cursor-not-allowed opacity-70"
               >
                 <option>BRL (R$)</option>
               </select>
+              <p className="text-[11px] text-muted-foreground mt-1.5">Por enquanto, apenas BRL é suportado.</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
+                Dia de fechamento da fatura do cartão
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={31}
+                value={closingDay}
+                onChange={(e) => setClosingDay(e.target.value)}
+                placeholder="Ex: 28 (vazio = desligado)"
+                className="w-full px-4 py-3 bg-card border-2 border-border hover:border-primary/50 rounded-xl text-sm text-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                Com o dia configurado, o dashboard agrupa as compras no crédito por fatura (atual e próxima).
+              </p>
             </div>
           </div>
         </div>
@@ -154,29 +184,30 @@ const SettingsPage = () => {
             Notificações e Preferências
           </h3>
           <div className="space-y-3 bg-card rounded-xl border border-border p-5">
-            {/* Toggle 1 */}
-            <div className="flex items-center justify-between p-4 hover:bg-muted/40 rounded-lg transition-colors">
+            {/* Notificações ainda não implementadas — controles desabilitados até existir backend para isso */}
+            <div className="flex items-center justify-between p-4 rounded-lg opacity-60">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <p className="text-sm font-medium text-foreground">Alertas de Orçamento</p>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Em breve</span>
                 </div>
                 <p className="text-xs text-muted-foreground">Receba notificações ao atingir o limite de gastos</p>
               </div>
-              <button className="ml-4 h-6 w-11 bg-primary rounded-full relative flex-shrink-0 transition-all hover:shadow-md hover:shadow-primary/40">
-                <div className="absolute right-0.5 top-0.5 h-5 w-5 bg-primary-foreground rounded-full shadow-sm transition-default" />
+              <button disabled className="ml-4 h-6 w-11 bg-muted rounded-full relative flex-shrink-0 cursor-not-allowed">
+                <div className="absolute left-0.5 top-0.5 h-5 w-5 bg-card rounded-full shadow-sm border border-border" />
               </button>
             </div>
 
-            {/* Toggle 2 */}
-            <div className="flex items-center justify-between p-4 hover:bg-muted/40 rounded-lg transition-colors border-t border-border">
+            <div className="flex items-center justify-between p-4 rounded-lg border-t border-border opacity-60">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <p className="text-sm font-medium text-foreground">Resumo Semanal</p>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Em breve</span>
                 </div>
                 <p className="text-xs text-muted-foreground">Relatório semanal dos seus gastos e receitas</p>
               </div>
-              <button className="ml-4 h-6 w-11 bg-muted rounded-full relative flex-shrink-0 transition-all hover:shadow-md hover:shadow-muted-foreground/20">
-                <div className="absolute left-0.5 top-0.5 h-5 w-5 bg-card rounded-full shadow-sm transition-default border border-border" />
+              <button disabled className="ml-4 h-6 w-11 bg-muted rounded-full relative flex-shrink-0 cursor-not-allowed">
+                <div className="absolute left-0.5 top-0.5 h-5 w-5 bg-card rounded-full shadow-sm border border-border" />
               </button>
             </div>
           </div>

@@ -1,39 +1,37 @@
 import { prisma } from "../config/prisma";
+import { HttpError } from "../utils/http-error";
+
+/**
+ * Finds the "Outro" fallback category, creating it if missing.
+ * The re-find after a failed create handles concurrent requests racing to
+ * create it at the same time (the schema cannot enforce uniqueness here
+ * because parentId is NULL for root categories).
+ */
+const findOrCreateOutroCategory = async () => {
+  const existing = await prisma.category.findFirst({ where: { name: "Outro", parentId: null } });
+  if (existing) return existing;
+
+  try {
+    return await prisma.category.create({
+      data: { name: "Outro", type: "expense", emoji: "📌" }
+    });
+  } catch {
+    const raced = await prisma.category.findFirst({ where: { name: "Outro", parentId: null } });
+    if (raced) return raced;
+    throw new Error("Failed to resolve fallback category");
+  }
+};
 
 /** Resolves a category name to its ID, searching parents and subcategories. */
-const resolveCategoryId = async (name: string, type: "income" | "expense"): Promise<string | null> => {
+export const resolveCategoryId = async (name: string): Promise<string | null> => {
   if (!name) return null;
-  
+
   // Try main category first, then any subcategory
   const existing = await prisma.category.findFirst({ where: { name } });
   if (existing) return existing.id;
 
-  // Se não existir (ex: "Outro" que pode ter sido excluido), criamos apenas ela.
-  // Evitamos criar subcategorias customizadas.
-  if (name === "Outro" || name === "Outros") {
-    let outroCategory = await prisma.category.findFirst({
-      where: { name: "Outro" }
-    });
-    
-    if (!outroCategory) {
-      outroCategory = await prisma.category.create({
-        data: { name: "Outro", type: "expense", emoji: "📌" }
-      });
-    }
-    return outroCategory.id;
-  }
-
-  // Fallback seguro: se chegar uma categoria que não existe, joga para "Outro"
-  let fallback = await prisma.category.findFirst({
-    where: { name: "Outro" }
-  });
-  
-  if (!fallback) {
-    fallback = await prisma.category.create({
-      data: { name: "Outro", type: "expense", emoji: "📌" }
-    });
-  }
-
+  // Fallback seguro: categoria desconhecida (ou "Outro"/"Outros") cai em "Outro"
+  const fallback = await findOrCreateOutroCategory();
   return fallback.id;
 };
 
@@ -67,7 +65,7 @@ type UpdateTransactionInput = {
 };
 
 export const createTransaction = async (input: CreateTransactionInput) => {
-  const categoryId = input.category ? await resolveCategoryId(input.category, input.type) : null;
+  const categoryId = input.category ? await resolveCategoryId(input.category) : null;
 
   const transaction = await prisma.transaction.create({
     data: {
@@ -94,9 +92,29 @@ export const createTransactionsBulk = async (inputs: CreateTransactionInput[]) =
     return { count: 0 };
   }
 
-  // createMany doesn't support nested relations — create one by one
-  const results = await Promise.all(inputs.map((input) => createTransaction(input)));
-  return { count: results.length };
+  // Resolve each distinct category name once (instead of once per row),
+  // then insert everything in a single createMany.
+  const distinctNames = [...new Set(inputs.map((input) => input.category).filter(Boolean))];
+  const categoryIdByName = new Map<string, string | null>();
+
+  for (const name of distinctNames) {
+    categoryIdByName.set(name, await resolveCategoryId(name));
+  }
+
+  const result = await prisma.transaction.createMany({
+    data: inputs.map((input) => ({
+      userId: input.userId,
+      title: input.title,
+      amount: input.amount,
+      type: input.type,
+      isFixed: input.isFixed ?? false,
+      categoryId: input.category ? categoryIdByName.get(input.category) ?? null : null,
+      method: input.method,
+      date: input.date
+    }))
+  });
+
+  return { count: result.count };
 };
 
 export const deleteImportedTransactionsByUser = async (userId: string) => {
@@ -132,9 +150,7 @@ export const getTransactionById = async (transactionId: string, userId: string) 
   });
 
   if (!transaction) {
-    const err = new Error("Transaction not found");
-    (err as Error & { statusCode?: number }).statusCode = 404;
-    throw err;
+    throw new HttpError(404, "Transaction not found");
   }
 
   return transaction;
@@ -149,13 +165,11 @@ export const updateTransaction = async (transactionId: string, userId: string, d
   });
 
   if (!transaction) {
-    const err = new Error("Transaction not found");
-    (err as Error & { statusCode?: number }).statusCode = 404;
-    throw err;
+    throw new HttpError(404, "Transaction not found");
   }
 
   const { category, ...rest } = data;
-  const categoryId = category !== undefined ? await resolveCategoryId(category, (data.type || transaction.type) as "income" | "expense") : undefined;
+  const categoryId = category !== undefined ? await resolveCategoryId(category) : undefined;
 
   const updated = await prisma.transaction.update({
     where: { id: transactionId },
@@ -181,9 +195,7 @@ export const deleteTransaction = async (transactionId: string, userId: string) =
   });
 
   if (!transaction) {
-    const err = new Error("Transaction not found");
-    (err as Error & { statusCode?: number }).statusCode = 404;
-    throw err;
+    throw new HttpError(404, "Transaction not found");
   }
 
   await prisma.transaction.delete({

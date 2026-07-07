@@ -8,6 +8,10 @@ import { router } from "./routes";
 
 const app = express();
 
+// Behind a single reverse proxy (e.g. Render) — required so req.ip reflects the
+// real client IP and express-rate-limit doesn't throttle all users as one.
+app.set("trust proxy", 1);
+
 const allowedOrigins = env.CORS_ORIGIN.split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -41,17 +45,14 @@ const corsOptions = {
       return;
     }
 
-    // If no origins configured and in production, log warning but allow
-    // This prevents 500 errors on preflight requests
     if (env.NODE_ENV === "production" && allowedOrigins.length === 0) {
       console.warn(
-        `[CORS] No CORS_ORIGIN configured in production. Allowing request from: ${origin}`
+        `[CORS] No CORS_ORIGIN configured in production — denying request from: ${origin}. ` +
+          "Set CORS_ORIGIN to the frontend URL(s), comma-separated."
       );
-      callback(null, true);
-      return;
+    } else {
+      console.warn(`[CORS] Origin ${origin} not allowed by CORS`);
     }
-
-    console.warn(`[CORS] Origin ${origin} not allowed by CORS`);
     // Do not throw an error here — returning an error causes Express to send
     // a 500 and no CORS headers. Instead, deny the CORS check so the browser
     // will block the request client-side while the server responds normally.

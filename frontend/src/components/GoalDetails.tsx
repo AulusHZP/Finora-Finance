@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { Goal } from "@/hooks/useGoals";
-import { ChevronRight, Target, BarChart3, CheckCircle2 } from "lucide-react";
+import { ChevronRight, Target, BarChart3, CheckCircle2, CalendarClock } from "lucide-react";
 import { formatCurrencyBRL, parseCurrencyInputBRL } from "@/lib/currency";
+import { suggestedMonthlyContribution } from "@/lib/goalMath";
 
 interface GoalDetailsProps {
   goal: Goal | null;
@@ -103,6 +104,34 @@ export function GoalDetails({ goal, onAddContribution }: GoalDetailsProps) {
           <p className="text-sm font-semibold text-foreground">{pct}%</p>
         </div>
       </div>
+
+      {/* Suggested monthly contribution */}
+      {(() => {
+        const suggestion = suggestedMonthlyContribution(
+          goal.current,
+          goal.target,
+          goal.targetDate ? new Date(goal.targetDate) : null
+        );
+
+        if (suggestion === null) return null;
+
+        return (
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 rounded-lg p-4 mb-6 flex items-start gap-3">
+            <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0">
+              <CalendarClock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Guarde {formatCurrencyBRL(suggestion)}/mês
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Faltam {formatCurrencyBRL(remaining)} para alcançar a meta até{" "}
+                {new Date(goal.targetDate!).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}.
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Add Contribution */}
       <div className="bg-primary/5 rounded-lg p-4 mb-6 border border-primary/10">

@@ -94,18 +94,9 @@ export function LoginForm({ onSubmit, onSignupClick }: LoginFormProps) {
 
         {/* Password Field */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <label htmlFor="password" className="block text-sm font-medium text-slate-900">
-              Senha
-            </label>
-            <button
-              type="button"
-              onClick={() => {}}
-              className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              Esqueceu a senha?
-            </button>
-          </div>
+          <label htmlFor="password" className="block text-sm font-medium text-slate-900 mb-2">
+            Senha
+          </label>
           <div className="relative">
             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input

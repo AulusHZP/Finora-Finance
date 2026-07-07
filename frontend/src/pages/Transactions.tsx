@@ -6,9 +6,12 @@ import { CategoryFilter } from "@/components/CategoryFilter";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { transactionAPI, type Transaction } from "@/services/api";
 import { parseCurrencyInputBRL } from "@/lib/currency";
+import { buildTransactionsCsv, downloadCsv } from "@/lib/exportCsv";
+import { RecurringManageSheet } from "@/components/RecurringManageSheet";
 
 const Transactions = () => {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [recurringOpen, setRecurringOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [title, setTitle] = useState("");
@@ -185,6 +188,19 @@ const Transactions = () => {
             {onlyCsvImported ? "Mostrando: Somente CSV" : "Filtrar: Somente CSV"}
           </button>
           <button
+            onClick={() => setRecurringOpen(true)}
+            className="h-11 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium bg-muted text-muted-foreground hover:bg-hover transition-default"
+          >
+            🔁 Recorrentes
+          </button>
+          <button
+            onClick={() => downloadCsv(`finora-transacoes-${new Date().toISOString().split("T")[0]}.csv`, buildTransactionsCsv(transactionList))}
+            disabled={transactionList.length === 0}
+            className="h-11 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium bg-muted text-muted-foreground hover:bg-hover transition-default disabled:opacity-50"
+          >
+            ⬇ Exportar CSV
+          </button>
+          <button
             onClick={() => setSheetOpen(true)}
             className="col-span-2 h-11 flex items-center justify-center gap-2 px-3 sm:px-4 bg-primary text-primary-foreground rounded-lg text-xs sm:text-sm font-medium hover:opacity-90 transition-default sm:col-span-1"
           >
@@ -216,6 +232,7 @@ const Transactions = () => {
         />
       </div>
       <AddTransactionSheet open={sheetOpen} onClose={() => setSheetOpen(false)} onTransactionAdded={handleTransactionAdded} />
+      <RecurringManageSheet open={recurringOpen} onClose={() => setRecurringOpen(false)} />
 
       {detailsOpen && selectedTransaction && (
         <>

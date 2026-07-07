@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, ArrowDownLeft, ArrowUpRight } from "lucide-react";
-import { transactionAPI } from "@/services/api";
+import { transactionAPI, recurringAPI } from "@/services/api";
 import { parseCurrencyInputBRL } from "@/lib/currency";
 import { CategoryPicker } from "@/components/CategoryPicker";
 
@@ -23,6 +23,7 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentCount, setInstallmentCount] = useState("2");
   const [isFixed, setIsFixed] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -71,20 +72,34 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
       // If they selected "Outro", we send "Outro". 
       // The custom text will be appended to the transaction description so it's not lost.
       const finalCategory = category;
-      const finalTitle = category === "Outro" && customCategory.trim() 
+      const finalTitle = category === "Outro" && customCategory.trim()
         ? `${description} (${customCategory.trim()})`
         : description;
 
-      await transactionAPI.createTransaction({
-        title: finalTitle,
-        amount: parsedAmount,
-        type,
-        isFixed,
-        category: finalCategory,
-        method,
-        date,
-        installmentCount: isInstallment ? parsedInstallmentCount : 1
-      });
+      if (isRecurring) {
+        // Cria a regra recorrente; o backend materializa a primeira ocorrência
+        // imediatamente quando a data é hoje ou já passou.
+        await recurringAPI.create({
+          title: finalTitle,
+          amount: parsedAmount,
+          type,
+          isFixed,
+          category: finalCategory,
+          method,
+          date
+        });
+      } else {
+        await transactionAPI.createTransaction({
+          title: finalTitle,
+          amount: parsedAmount,
+          type,
+          isFixed,
+          category: finalCategory,
+          method,
+          date,
+          installmentCount: isInstallment ? parsedInstallmentCount : 1
+        });
+      }
 
       // Reset form
       setAmount("");
@@ -95,6 +110,7 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
       setIsInstallment(false);
       setInstallmentCount("2");
       setIsFixed(false);
+      setIsRecurring(false);
       setDate(new Date().toISOString().split('T')[0]);
       setType("expense");
       
@@ -196,7 +212,7 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
             </div>
           </div>
 
-          {method === "Crédito" && (
+          {method === "Crédito" && !isRecurring && (
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-0.5 block">Compra parcelada?</label>
               <div className="flex gap-1.5 mb-1.5">
@@ -209,7 +225,10 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsInstallment(true)}
+                  onClick={() => {
+                    setIsInstallment(true);
+                    setIsRecurring(false);
+                  }}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-default press-scale ${isInstallment ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}
                 >
                   Sim
@@ -232,14 +251,35 @@ export function AddTransactionSheet({ open, onClose, onTransactionAdded }: AddTr
           )}
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-0.5 block">Tag</label>
-            <button
-              type="button"
-              onClick={() => setIsFixed((prev) => !prev)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-default press-scale ${isFixed ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}
-            >
-              Custo Fixo
-            </button>
+            <label className="text-xs font-medium text-muted-foreground mb-0.5 block">Tags</label>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsFixed((prev) => !prev)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-default press-scale ${isFixed ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}
+              >
+                Custo Fixo
+              </button>
+              <button
+                type="button"
+                disabled={isInstallment}
+                onClick={() =>
+                  setIsRecurring((prev) => {
+                    const next = !prev;
+                    if (next) setIsInstallment(false);
+                    return next;
+                  })
+                }
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-default press-scale disabled:opacity-40 disabled:cursor-not-allowed ${isRecurring ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}
+              >
+                🔁 Repetir todo mês
+              </button>
+            </div>
+            {isRecurring && (
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                Será lançada automaticamente todo dia {Number(date.split("-")[2]) || 1}, a partir de {date.split("-").reverse().join("/")}.
+              </p>
+            )}
           </div>
 
           {error && (

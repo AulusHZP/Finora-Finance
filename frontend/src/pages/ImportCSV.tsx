@@ -6,6 +6,13 @@ import { parseCurrencyInputBRL, formatCurrencyBRL } from "@/lib/currency";
 
 type MappableField = "date" | "description" | "amount" | "skip";
 
+/**
+ * Sign convention of the "amount" column:
+ * - creditCard (fatura de cartão): positive = expense, negative = payment/refund
+ * - bankStatement (extrato de conta): positive = money in, negative = money out
+ */
+type SignConvention = "creditCard" | "bankStatement";
+
 interface PreviewTransaction {
   date: string;
   description: string;
@@ -73,6 +80,7 @@ const ImportCSV = () => {
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<string[][]>([]);
   const [mapping, setMapping] = useState<Record<number, MappableField>>({});
+  const [signConvention, setSignConvention] = useState<SignConvention>("creditCard");
   const [duplicates, setDuplicates] = useState<number[]>([]);
   const [previewRows, setPreviewRows] = useState<PreviewTransaction[]>([]);
   const [importPayload, setImportPayload] = useState<ImportTransactionPayload[]>([]);
@@ -157,7 +165,10 @@ const ImportCSV = () => {
         return;
       }
 
-      const type: "income" | "expense" = parsedAmount < 0 ? "income" : "expense";
+      const type: "income" | "expense" =
+        signConvention === "creditCard"
+          ? parsedAmount < 0 ? "income" : "expense"
+          : parsedAmount < 0 ? "expense" : "income";
       const key = `${parsedDate}-${parsedAmount}-${description.toLowerCase()}`;
       const isDuplicate = seen.has(key);
       if (isDuplicate) {
@@ -338,6 +349,26 @@ const ImportCSV = () => {
                 </select>
               </div>
             ))}
+          </div>
+
+          <div className="mb-4">
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Tipo de arquivo (convenção de sinal do valor)</p>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSignConvention("creditCard")}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-default ${signConvention === "creditCard" ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}
+              >
+                Fatura de cartão (positivo = despesa)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSignConvention("bankStatement")}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-default ${signConvention === "bankStatement" ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}
+              >
+                Extrato de conta (positivo = receita)
+              </button>
+            </div>
           </div>
 
           {!hasRequiredFields && (

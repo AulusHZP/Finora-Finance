@@ -1,17 +1,11 @@
 import { NextFunction, Request, Response } from "express";
 import { getDashboardByUserId } from "../services/dashboard.service";
 import { ok } from "../utils/http";
+import { requireUserId } from "../utils/request";
 
 export const getDashboardController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
-      });
-    }
+    const userId = requireUserId(req);
 
     const dashboard = await getDashboardByUserId(userId);
 

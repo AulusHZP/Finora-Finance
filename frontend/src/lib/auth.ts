@@ -1,10 +1,11 @@
 import { API_BASE_URL } from "@/config/api";
-import { clearApiCache } from "@/services/api";
+import { authorizedJson, clearApiCache } from "@/services/api";
 
 export type AuthUser = {
   id: string;
   name: string;
   email: string;
+  creditCardClosingDay?: number | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -18,9 +19,11 @@ type ApiResponse<T> = {
 type AuthPayload = {
   user: AuthUser;
   token: string;
+  refreshToken?: string;
 };
 
 const TOKEN_KEY = "finora_token";
+const REFRESH_TOKEN_KEY = "finora_refresh_token";
 const USER_KEY = "finora_user";
 
 const parseResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
@@ -31,11 +34,6 @@ const parseResponse = async <T>(response: Response): Promise<ApiResponse<T>> => 
   }
 
   return body;
-};
-
-const authHeaders = () => {
-  const token = getStoredToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
 export const registerRequest = async (payload: { name: string; email: string; password: string }) => {
@@ -68,16 +66,9 @@ export const loginRequest = async (payload: { email: string; password: string })
   return body.data;
 };
 
-export const meRequest = async () => {
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders()
-    }
-  });
+export const meRequest = async (): Promise<AuthUser> => {
+  const body = await authorizedJson<ApiResponse<{ user: AuthUser }>>(`/auth/me`, { method: "GET" });
 
-  const body = await parseResponse<{ user: AuthUser }>(response);
   if (!body.data?.user) {
     throw new Error("Invalid response from server");
   }
@@ -85,17 +76,17 @@ export const meRequest = async () => {
   return body.data.user;
 };
 
-export const updateProfileRequest = async (payload: { name?: string; email?: string }) => {
-  const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+export const updateProfileRequest = async (payload: {
+  name?: string;
+  email?: string;
+  creditCardClosingDay?: number | null;
+}): Promise<AuthUser> => {
+  const body = await authorizedJson<ApiResponse<{ user: AuthUser }>>(`/auth/profile`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders()
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
 
-  const body = await parseResponse<{ user: AuthUser }>(response);
   if (!body.data?.user) {
     throw new Error("Invalid response from server");
   }
@@ -104,20 +95,22 @@ export const updateProfileRequest = async (payload: { name?: string; email?: str
 };
 
 export const logoutRequest = async () => {
-  const response = await fetch(`${API_BASE_URL}/auth/logout`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders()
-    }
-  });
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
-  await parseResponse(response);
+  // Revokes the refresh token server-side; the access token stays stateless.
+  await authorizedJson(`/auth/logout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(refreshToken ? { refreshToken } : {})
+  });
 };
 
 export const storeAuthSession = (payload: AuthPayload) => {
   localStorage.setItem(TOKEN_KEY, payload.token);
   localStorage.setItem(USER_KEY, JSON.stringify(payload.user));
+  if (payload.refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
+  }
 };
 
 export const setStoredUser = (user: AuthUser) => {
@@ -139,6 +132,7 @@ export const getStoredUser = (): AuthUser | null => {
 
 export const clearAuthSession = () => {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   clearApiCache();
 };

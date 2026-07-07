@@ -7,11 +7,13 @@ import { formatCurrencyBRL, parseCurrencyInputBRL } from "@/lib/currency";
 interface BalanceAdjustSheetProps {
   open: boolean;
   onClose: () => void;
+  /** Total balance (including goal reserves) — what the bank account should show. */
   currentBalance: number;
   currentOffset: number;
+  reservedInGoals?: number;
 }
 
-export function BalanceAdjustSheet({ open, onClose, currentBalance, currentOffset }: BalanceAdjustSheetProps) {
+export function BalanceAdjustSheet({ open, onClose, currentBalance, currentOffset, reservedInGoals = 0 }: BalanceAdjustSheetProps) {
   const [newBalance, setNewBalance] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -133,6 +135,11 @@ export function BalanceAdjustSheet({ open, onClose, currentBalance, currentOffse
               <p className="text-2xl font-bold tracking-tight tabular-nums text-foreground mt-1">
                 {formatCurrencyBRL(currentBalance)}
               </p>
+              {reservedInGoals > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Inclui {formatCurrencyBRL(reservedInGoals)} guardados em metas — compare com o saldo total do banco.
+                </p>
+              )}
             </div>
 
             {/* New Balance Input */}

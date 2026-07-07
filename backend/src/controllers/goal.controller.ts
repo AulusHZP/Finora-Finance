@@ -3,12 +3,14 @@ import { z } from "zod";
 import {
   createGoal,
   getGoalsByUserId,
-  getGoalById,
+  getOwnedGoalById,
   updateGoal,
+  contributeToGoal,
   deleteGoal,
 } from "../services/goal.service";
 import { invalidateDashboardCache } from "../services/dashboard.service";
 import { ok } from "../utils/http";
+import { requireUserId } from "../utils/request";
 
 const createGoalSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(255),
@@ -27,11 +29,15 @@ const updateGoalSchema = z.object({
   current: z.number().min(0, "Current must be >= 0").optional(),
   target: z.number().positive("Target must be greater than 0").optional(),
   emoji: z.string().min(1, "Emoji is required").optional(),
-  targetDate: z.string().optional().refine(
+  targetDate: z.string().nullable().optional().refine(
     (val) => !val || !isNaN(Date.parse(val)),
     "Invalid date format"
   ),
   priority: z.enum(["low", "medium", "high"]).optional().nullable(),
+});
+
+const contributeGoalSchema = z.object({
+  amount: z.number().positive("Amount must be greater than 0"),
 });
 
 export const createGoalController = async (
@@ -40,11 +46,7 @@ export const createGoalController = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
+    const userId = requireUserId(req);
 
     const payload = createGoalSchema.parse(req.body);
 
@@ -72,14 +74,7 @@ export const getGoalsController = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
+    const userId = requireUserId(req);
 
     const goals = await getGoalsByUserId(userId);
     return res.status(200).json(ok("Goals fetched successfully", { goals }));
@@ -94,31 +89,10 @@ export const getGoalController = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?.id;
+    const userId = requireUserId(req);
     const { id } = req.params as { id: string };
 
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const goal = await getGoalById(id);
-
-    if (!goal) {
-      return res.status(404).json({
-        success: false,
-        message: "Goal not found",
-      });
-    }
-
-    if (goal.userId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden",
-      });
-    }
+    const goal = await getOwnedGoalById(id, userId);
 
     return res.status(200).json(ok("Goal fetched successfully", goal));
   } catch (error) {
@@ -132,31 +106,10 @@ export const updateGoalController = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?.id;
+    const userId = requireUserId(req);
     const { id } = req.params as { id: string };
 
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const goal = await getGoalById(id);
-
-    if (!goal) {
-      return res.status(404).json({
-        success: false,
-        message: "Goal not found",
-      });
-    }
-
-    if (goal.userId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden",
-      });
-    }
+    await getOwnedGoalById(id, userId);
 
     const payload = updateGoalSchema.parse(req.body);
 
@@ -181,37 +134,37 @@ export const updateGoalController = async (
   }
 };
 
+export const contributeGoalController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = requireUserId(req);
+    const { id } = req.params as { id: string };
+
+    const payload = contributeGoalSchema.parse(req.body);
+
+    const updatedGoal = await contributeToGoal(id, userId, payload.amount);
+
+    invalidateDashboardCache(userId);
+
+    return res.status(200).json(ok("Contribution added successfully", updatedGoal));
+  } catch (error) {
+    return next(error);
+  }
+};
+
 export const deleteGoalController = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?.id;
+    const userId = requireUserId(req);
     const { id } = req.params as { id: string };
 
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const goal = await getGoalById(id);
-
-    if (!goal) {
-      return res.status(404).json({
-        success: false,
-        message: "Goal not found",
-      });
-    }
-
-    if (goal.userId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden",
-      });
-    }
+    await getOwnedGoalById(id, userId);
 
     await deleteGoal(id);
 

@@ -1,18 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
-import { goalAPI, type CreateGoalPayload } from "@/services/api";
+import { goalAPI, type CreateGoalPayload, type Goal } from "@/services/api";
 
-export interface Goal {
-  id: string;
-  title: string;
-  current: number;
-  target: number;
-  emoji: string;
-  targetDate?: string;
-  priority?: "low" | "medium" | "high";
-  createdAt: string;
-  userId?: string;
-  updatedAt?: string;
-}
+export type { Goal, CreateGoalPayload };
 
 export function useGoals() {
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -37,47 +26,31 @@ export function useGoals() {
     loadGoals();
   }, [loadGoals]);
 
-  const createGoal = useCallback(
-    async (goal: Omit<Goal, "id" | "createdAt" | "userId" | "updatedAt">) => {
-      try {
-        const newGoal = await goalAPI.createGoal({
-          title: goal.title,
-          current: goal.current,
-          target: goal.target,
-          emoji: goal.emoji,
-          targetDate: goal.targetDate,
-          priority: goal.priority,
-        });
-        setGoals((prev) => [newGoal, ...prev]);
-        return newGoal;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Erro ao criar objetivo";
-        setError(message);
-        throw err;
-      }
-    },
-    []
-  );
+  const createGoal = useCallback(async (goal: CreateGoalPayload) => {
+    try {
+      const newGoal = await goalAPI.createGoal(goal);
+      setGoals((prev) => [newGoal, ...prev]);
+      return newGoal;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao criar objetivo";
+      setError(message);
+      throw err;
+    }
+  }, []);
 
-  const updateGoal = useCallback(
-    async (
-      id: string,
-      updates: Partial<Omit<Goal, "id" | "createdAt" | "userId" | "updatedAt">>
-    ) => {
-      try {
-        const updatedGoal = await goalAPI.updateGoal(id, updates as Partial<CreateGoalPayload>);
-        setGoals((prev) =>
-          prev.map((goal) => (goal.id === id ? updatedGoal : goal))
-        );
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Erro ao atualizar objetivo";
-        setError(message);
-        throw err;
-      }
-    },
-    []
-  );
+  const updateGoal = useCallback(async (id: string, updates: Partial<CreateGoalPayload>) => {
+    try {
+      const updatedGoal = await goalAPI.updateGoal(id, updates);
+      setGoals((prev) =>
+        prev.map((goal) => (goal.id === id ? updatedGoal : goal))
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao atualizar objetivo";
+      setError(message);
+      throw err;
+    }
+  }, []);
 
   const deleteGoal = useCallback(async (id: string) => {
     try {
@@ -91,15 +64,21 @@ export function useGoals() {
     }
   }, []);
 
-  const addContribution = useCallback(
-    async (id: string, amount: number) => {
-      const goal = goals.find((g) => g.id === id);
-      if (goal) {
-        await updateGoal(id, { current: goal.current + amount });
-      }
-    },
-    [goals, updateGoal]
-  );
+  // The server applies the increment atomically, so concurrent contributions
+  // (two tabs/devices) can't overwrite each other.
+  const addContribution = useCallback(async (id: string, amount: number) => {
+    try {
+      const updatedGoal = await goalAPI.contribute(id, amount);
+      setGoals((prev) =>
+        prev.map((goal) => (goal.id === id ? updatedGoal : goal))
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao adicionar contribuição";
+      setError(message);
+      throw err;
+    }
+  }, []);
 
   return {
     goals,

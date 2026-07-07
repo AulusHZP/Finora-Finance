@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { TrendingUp, TrendingDown, Wallet, PieChart, AlertTriangle, RefreshCw } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, PieChart, AlertTriangle, RefreshCw, Target } from "lucide-react";
 import { formatCurrencyBRL } from "@/lib/currency";
-import type { Transaction, DashboardSummary } from "@/services/api";
+import type { DashboardSummary } from "@/services/api";
 import { BalanceAdjustSheet } from "@/components/BalanceAdjustSheet";
 
 type AlertState = 'healthy' | 'critical';
@@ -11,87 +11,34 @@ function getExpenseAlertState(despesas: number, receita: number): AlertState {
   return despesas >= receita ? 'critical' : 'healthy';
 }
 
-const FIXED_COST_REGEX = /(aluguel|moradia|energia|água|agua|internet|assinatura|condomínio|condominio|conta|seguro|plano)/i;
-
-export function StatCards({
-  transactions,
-  summary,
-}: {
-  transactions: Transaction[];
-  summary?: DashboardSummary;
-}) {
+// All numbers come from the server summary (single source of truth) —
+// the backend computes them over a rolling 30-day window with carryover.
+export function StatCards({ summary }: { summary?: DashboardSummary }) {
   const [adjustOpen, setAdjustOpen] = useState(false);
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
-
-  let incomeTotal = 0;
-  let expenseTotal = 0;
-  let fixedCostsTotal = 0;
-  let availableTotal = 0;
-
-  // Normalizer just to be ultra safe
-  const normalizeType = (type: unknown): "income" | "expense" => {
-    const v = String(type || "").trim().toLowerCase();
-    if (["income", "receita", "entrada", "credit", "credito", "crédito"].includes(v))
-      return "income";
-    return "expense";
-  };
-
-  transactions.forEach((tx) => {
-    const datePart = tx.date.split("T")[0];
-    const [year, month] = datePart.split("-").map(Number);
-    
-    const amount = Math.abs(Number(tx.amount) || 0);
-    const type = normalizeType(tx.type);
-    const isExpense = type === "expense";
-    const isIncome = type === "income";
-
-    // Sempre conta pro Saldo Disponível Total
-    if (isIncome) availableTotal += amount;
-    if (isExpense) availableTotal -= amount;
-
-    // Mas para os cards de Receita/Despesa, filtra apenas o mês atual
-    if (year === currentYear && month - 1 === currentMonth) {
-      if (isIncome) {
-        incomeTotal += amount;
-      }
-
-      if (isExpense) {
-        expenseTotal += amount;
-
-        const searchableText = `${tx.title} ${tx.category}`;
-        const isTaggedFixed = Boolean(tx.isFixed);
-        if (isTaggedFixed || FIXED_COST_REGEX.test(searchableText)) {
-          fixedCostsTotal += amount;
-        }
-      }
-    } 
-  });
-
-  // O valor que veio de meses anteriores é, matematicamente, a diferença do saldo total para o resultado desse mês
-  const carryoverBalance = availableTotal - incomeTotal + expenseTotal;
-
-  // Apply the invisible balance offset from the server
+  const incomeTotal = summary?.incomeTotal ?? 0;
+  const expenseTotal = summary?.expenseTotal ?? 0;
+  const fixedCostsTotal = summary?.fixedCostsTotal ?? 0;
+  const availableTotal = summary?.availableBalance ?? 0;
+  const spendableTotal = summary?.spendableBalance ?? availableTotal;
+  const goalsReserved = summary?.goalsReserved ?? 0;
+  const carryoverBalance = summary?.carryoverBalance ?? 0;
   const balanceOffset = summary?.balanceOffset ?? 0;
-  availableTotal += balanceOffset;
-
-  const fixedCostsRatio = expenseTotal > 0 ? Math.round((fixedCostsTotal / expenseTotal) * 100) : 0;
-  const expenseOfIncomeRatio = incomeTotal > 0 ? Math.round((expenseTotal / incomeTotal) * 100) : 0;
+  const fixedCostsRatio = summary?.fixedCostsRatio ?? 0;
+  const expenseOfIncomeRatio = summary?.expenseOfIncomeRatio ?? 0;
 
   // Build the carryover label for the Disponível card
   const carryoverLabel =
     carryoverBalance > 0
-      ? `+${formatCurrencyBRL(carryoverBalance)} do mês anterior`
+      ? `+${formatCurrencyBRL(carryoverBalance)} de períodos anteriores`
       : carryoverBalance < 0
-        ? `${formatCurrencyBRL(carryoverBalance)} do mês anterior`
+        ? `${formatCurrencyBRL(carryoverBalance)} de períodos anteriores`
         : "";
 
   return (
     <>
     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-5">
-      
+
       {/* 1. DISPONÍVEL (Hero Card) — Clickable to adjust balance */}
       <button
         type="button"
@@ -118,10 +65,16 @@ export function StatCards({
 
           <div className="flex flex-col items-center">
             <p className="text-4xl lg:text-5xl font-extrabold tracking-tight tabular-nums drop-shadow-sm text-white">
-              {formatCurrencyBRL(availableTotal)}
+              {formatCurrencyBRL(spendableTotal)}
             </p>
+            {goalsReserved > 0 && (
+              <div className="mt-3 inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-md bg-white/15 backdrop-blur-sm text-xs font-semibold text-white shadow-sm border border-white/10">
+                <Target className="h-3 w-3 text-white" />
+                {formatCurrencyBRL(goalsReserved)} guardados em metas
+              </div>
+            )}
             {carryoverLabel && (
-              <div className="mt-3 inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 backdrop-blur-sm text-xs font-medium text-white/95 shadow-sm border border-white/10">
+              <div className="mt-2 inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 backdrop-blur-sm text-xs font-medium text-white/95 shadow-sm border border-white/10">
                  {carryoverBalance > 0 ? <TrendingUp className="h-3 w-3 text-white" /> : <TrendingDown className="h-3 w-3 text-white" />}
                  {carryoverLabel}
               </div>
@@ -132,7 +85,7 @@ export function StatCards({
 
       {/* 2 & 3. RECEITA E DESPESAS (Stacked Column) */}
       <div className="col-span-1 md:col-span-6 lg:col-span-4 flex flex-col gap-4 lg:gap-5">
-        
+
         {/* RECEITA */}
         <div className="group flex-1 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/70 dark:border-white/10 p-4 lg:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1">
            <div className="flex justify-between items-start mb-2">
@@ -153,7 +106,7 @@ export function StatCards({
           const alertState = getExpenseAlertState(expenseTotal, incomeTotal);
           const isCritical = alertState === 'critical';
           const showRatio = incomeTotal > 0;
-          
+
           return (
             <div className="group flex-1 rounded-2xl bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/70 dark:border-white/10 p-4 lg:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1">
               <div className="flex justify-between items-start mb-2 transition-colors duration-300">
@@ -180,10 +133,10 @@ export function StatCards({
               <p className={`text-2xl font-bold tracking-tight tabular-nums mt-1 mb-3 transition-colors duration-300 ${isCritical ? 'text-destructive' : 'text-foreground'}`}>
                 {formatCurrencyBRL(expenseTotal)}
               </p>
-              
+
               <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                <div 
-                  className={`h-full rounded-full transition-all duration-1000 ease-out ${isCritical ? 'bg-destructive' : 'bg-blue-500'}`} 
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ease-out ${isCritical ? 'bg-destructive' : 'bg-blue-500'}`}
                   style={{ width: `${isCritical ? 100 : Math.min(expenseOfIncomeRatio, 100)}%` }}
                 />
               </div>
@@ -206,7 +159,7 @@ export function StatCards({
               {formatCurrencyBRL(fixedCostsTotal)}
             </p>
           </div>
-          
+
           {expenseTotal > 0 && (
             <div className="mt-4 pt-4 border-t border-border/40">
               <div className="flex justify-between items-end mb-2">
@@ -214,8 +167,8 @@ export function StatCards({
                 <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{fixedCostsRatio}%</span>
               </div>
               <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                <div 
-                  className="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out" 
+                <div
+                  className="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out"
                   style={{ width: `${Math.min(fixedCostsRatio, 100)}%` }}
                 />
               </div>
@@ -230,6 +183,7 @@ export function StatCards({
       onClose={() => setAdjustOpen(false)}
       currentBalance={availableTotal}
       currentOffset={balanceOffset}
+      reservedInGoals={goalsReserved}
     />
     </>
   );

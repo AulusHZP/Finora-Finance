@@ -1,4 +1,7 @@
 import { prisma } from "../config/prisma";
+import { getInvoiceWindows } from "../utils/dates";
+import { buildBudgetStatuses, type BudgetStatus } from "./budget.service";
+import { hasDueRecurrences, materializeDueRecurringTransactions } from "./recurring.service";
 
 type RawTransaction = {
   id: string;
@@ -29,20 +32,31 @@ type DashboardGoal = {
   updatedAt: Date;
 };
 
+export type CreditCardSummary = {
+  closingDay: number;
+  currentInvoiceTotal: number;
+  nextInvoiceTotal: number;
+  currentClosesOn: string;
+};
+
 export type DashboardSummary = {
   incomeTotal: number;
   expenseTotal: number;
   availableBalance: number;
+  spendableBalance: number;
+  goalsReserved: number;
   fixedCostsTotal: number;
   expenseOfIncomeRatio: number;
   fixedCostsRatio: number;
   carryoverBalance: number;
   balanceOffset: number;
+  creditCard: CreditCardSummary | null;
 };
 
 export type DashboardData = {
   transactions: DashboardTransaction[];
   goals: DashboardGoal[];
+  budgets: BudgetStatus[];
   summary: DashboardSummary;
   generatedAt: string;
 };
@@ -67,16 +81,48 @@ const getCurrentMonthBounds = () => {
   return { start, end };
 };
 
+const buildCreditCardSummary = (
+  rawTransactions: RawTransaction[],
+  closingDay: number | null
+): CreditCardSummary | null => {
+  if (!closingDay) return null;
+
+  const { current, next } = getInvoiceWindows(closingDay);
+
+  let currentInvoiceTotal = 0;
+  let nextInvoiceTotal = 0;
+
+  for (const tx of rawTransactions) {
+    if (tx.type !== "expense" || tx.method !== "Crédito") continue;
+
+    const amount = normalizeAmount(tx.amount);
+    if (tx.date > current.opensAfter && tx.date <= current.closesOn) {
+      currentInvoiceTotal += amount;
+    } else if (tx.date > next.opensAfter && tx.date <= next.closesOn) {
+      nextInvoiceTotal += amount;
+    }
+  }
+
+  return {
+    closingDay,
+    currentInvoiceTotal,
+    nextInvoiceTotal,
+    currentClosesOn: current.closesOn.toISOString()
+  };
+};
+
 const buildSummary = (
   allTransactions: DashboardTransaction[],
   currentMonthStart: Date,
-  balanceOffset: number
+  balanceOffset: number,
+  goalsReserved: number,
+  creditCard: CreditCardSummary | null
 ): DashboardSummary => {
-  // Split transactions into current month vs previous months
+  // Split transactions into current window vs previous periods
   const currentMonth = allTransactions.filter((t) => t.date >= currentMonthStart);
   const previousMonths = allTransactions.filter((t) => t.date < currentMonthStart);
 
-  // Calculate carryover (surplus from all previous months)
+  // Calculate carryover (net result of all previous periods)
   let prevIncome = 0;
   let prevExpense = 0;
   for (const t of previousMonths) {
@@ -86,7 +132,7 @@ const buildSummary = (
   }
   const carryoverBalance = prevIncome - prevExpense;
 
-  // Calculate current month totals
+  // Calculate current window totals
   let incomeTotal = 0;
   let expenseTotal = 0;
   let fixedCostsTotal = 0;
@@ -110,36 +156,24 @@ const buildSummary = (
     }
   }
 
-  // Available balance = carryover from previous months + current month income - current month expenses + manual offset
-  const effectiveIncome = incomeTotal + (carryoverBalance > 0 ? carryoverBalance : 0);
+  // Available balance = carryover from previous periods (positive or negative —
+  // overspending in the past reduces what is available today) + current window
+  // income - expenses + manual offset. This equals the all-time net + offset.
+  // Spendable balance additionally sets aside what is reserved in goals.
+  const availableBalance = carryoverBalance + incomeTotal - expenseTotal + balanceOffset;
 
   return {
     incomeTotal,
     expenseTotal,
-    availableBalance: effectiveIncome - expenseTotal + balanceOffset,
+    availableBalance,
+    spendableBalance: availableBalance - goalsReserved,
+    goalsReserved,
     fixedCostsTotal,
     expenseOfIncomeRatio: incomeTotal > 0 ? Math.round((expenseTotal / incomeTotal) * 100) : 0,
     fixedCostsRatio: expenseTotal > 0 ? Math.round((fixedCostsTotal / expenseTotal) * 100) : 0,
     carryoverBalance,
-    balanceOffset
-  };
-};
-
-const buildDashboardValue = (transactions: DashboardTransaction[], goals: DashboardGoal[], balanceOffset: number): DashboardData => {
-  const { start: currentMonthStart } = getCurrentMonthBounds();
-
-  // Sort all transactions newest first
-  const sortedTransactions = [...transactions].sort((left, right) => right.date.getTime() - left.date.getTime());
-  const sortedGoals = [...goals].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
-
-  return {
-    // Return ALL transactions so the chart / insights components have full historical data.
-    // The frontend components (TransactionTable, SpendingChart) apply their own date filtering.
-    transactions: sortedTransactions,
-    goals: sortedGoals,
-    // Summary is still scoped to the current month (with carryover from previous months).
-    summary: buildSummary(sortedTransactions, currentMonthStart, balanceOffset),
-    generatedAt: new Date().toISOString()
+    balanceOffset,
+    creditCard
   };
 };
 
@@ -148,12 +182,24 @@ export const invalidateDashboardCache = (userId: string) => {
 };
 
 export const getDashboardByUserId = async (userId: string): Promise<DashboardData> => {
-  const cached = dashboardCache.get(userId);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.value;
+  // Materialize due recurring transactions before serving anything. The cheap
+  // indexed count keeps the common case (nothing due) at one extra query.
+  if (await hasDueRecurrences(userId)) {
+    const materialized = await materializeDueRecurringTransactions(userId);
+    if (materialized > 0) {
+      invalidateDashboardCache(userId);
+    }
   }
 
-  const [transactions, goals, user] = await Promise.all([
+  const cached = dashboardCache.get(userId);
+  if (cached) {
+    if (cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
+    dashboardCache.delete(userId);
+  }
+
+  const [rawTransactions, goals, budgets, user] = await Promise.all([
     prisma.transaction.findMany({
       where: { userId },
       orderBy: { date: "desc" },
@@ -170,9 +216,7 @@ export const getDashboardByUserId = async (userId: string): Promise<DashboardDat
         createdAt: true,
         updatedAt: true
       }
-    }).then((rows) =>
-      rows.map((t) => ({ ...t, category: t.category?.name ?? "" }))
-    ),
+    }),
     prisma.goal.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
@@ -189,14 +233,43 @@ export const getDashboardByUserId = async (userId: string): Promise<DashboardDat
         updatedAt: true
       }
     }),
+    prisma.budget.findMany({
+      where: { userId },
+      include: { category: true },
+      orderBy: { createdAt: "asc" }
+    }),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { balanceOffset: true }
+      select: { balanceOffset: true, creditCardClosingDay: true }
     })
   ]);
 
   const balanceOffset = user?.balanceOffset ?? 0;
-  const value = buildDashboardValue(transactions, goals, balanceOffset);
+  const goalsReserved = goals.reduce((sum, goal) => sum + Math.max(0, Number(goal.current) || 0), 0);
+
+  const budgetStatuses = buildBudgetStatuses(budgets, rawTransactions);
+  const creditCard = buildCreditCardSummary(rawTransactions, user?.creditCardClosingDay ?? null);
+
+  const transactions: DashboardTransaction[] = rawTransactions.map((t) => ({
+    ...t,
+    category: t.category?.name ?? ""
+  }));
+
+  const { start: currentMonthStart } = getCurrentMonthBounds();
+  const sortedTransactions = [...transactions].sort((left, right) => right.date.getTime() - left.date.getTime());
+  const sortedGoals = [...goals].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+
+  const value: DashboardData = {
+    // Return ALL transactions so the chart / insights components have full historical data.
+    // The frontend components (TransactionTable, SpendingChart) apply their own date filtering.
+    transactions: sortedTransactions,
+    goals: sortedGoals,
+    budgets: budgetStatuses,
+    // Summary is still scoped to the current window (with carryover from previous periods).
+    summary: buildSummary(sortedTransactions, currentMonthStart, balanceOffset, goalsReserved, creditCard),
+    generatedAt: new Date().toISOString()
+  };
+
   dashboardCache.set(userId, {
     expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS,
     value

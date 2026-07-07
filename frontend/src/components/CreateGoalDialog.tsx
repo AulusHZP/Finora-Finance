@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import type { Goal } from "@/hooks/useGoals";
+import type { CreateGoalPayload, Goal } from "@/hooks/useGoals";
 import { parseCurrencyInputBRL } from "@/lib/currency";
 
 interface CreateGoalDialogProps {
   open: boolean;
   onClose: () => void;
-  onSave: (goal: Omit<Goal, "id" | "createdAt">) => void;
+  onSave: (goal: CreateGoalPayload) => void;
   editingGoal?: Goal;
 }
 
