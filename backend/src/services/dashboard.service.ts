@@ -43,7 +43,6 @@ export type DashboardSummary = {
   incomeTotal: number;
   expenseTotal: number;
   availableBalance: number;
-  spendableBalance: number;
   goalsReserved: number;
   fixedCostsTotal: number;
   expenseOfIncomeRatio: number;
@@ -159,14 +158,13 @@ const buildSummary = (
   // Available balance = carryover from previous periods (positive or negative —
   // overspending in the past reduces what is available today) + current window
   // income - expenses + manual offset. This equals the all-time net + offset.
-  // Spendable balance additionally sets aside what is reserved in goals.
+  // Goal reserves are NOT subtracted — goalsReserved is informational only.
   const availableBalance = carryoverBalance + incomeTotal - expenseTotal + balanceOffset;
 
   return {
     incomeTotal,
     expenseTotal,
     availableBalance,
-    spendableBalance: availableBalance - goalsReserved,
     goalsReserved,
     fixedCostsTotal,
     expenseOfIncomeRatio: incomeTotal > 0 ? Math.round((expenseTotal / incomeTotal) * 100) : 0,

@@ -20,7 +20,6 @@ export function StatCards({ summary }: { summary?: DashboardSummary }) {
   const expenseTotal = summary?.expenseTotal ?? 0;
   const fixedCostsTotal = summary?.fixedCostsTotal ?? 0;
   const availableTotal = summary?.availableBalance ?? 0;
-  const spendableTotal = summary?.spendableBalance ?? availableTotal;
   const goalsReserved = summary?.goalsReserved ?? 0;
   const carryoverBalance = summary?.carryoverBalance ?? 0;
   const balanceOffset = summary?.balanceOffset ?? 0;
@@ -65,7 +64,7 @@ export function StatCards({ summary }: { summary?: DashboardSummary }) {
 
           <div className="flex flex-col items-center">
             <p className="text-4xl lg:text-5xl font-extrabold tracking-tight tabular-nums drop-shadow-sm text-white">
-              {formatCurrencyBRL(spendableTotal)}
+              {formatCurrencyBRL(availableTotal)}
             </p>
             {goalsReserved > 0 && (
               <div className="mt-3 inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-md bg-white/15 backdrop-blur-sm text-xs font-semibold text-white shadow-sm border border-white/10">
