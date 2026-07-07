@@ -48,7 +48,6 @@ export interface DashboardSummary {
   incomeTotal: number;
   expenseTotal: number;
   availableBalance: number;
-  spendableBalance: number;
   goalsReserved: number;
   fixedCostsTotal: number;
   expenseOfIncomeRatio: number;
