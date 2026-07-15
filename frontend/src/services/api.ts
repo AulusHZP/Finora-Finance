@@ -46,7 +46,10 @@ export interface CreditCardSummary {
 
 export interface DashboardSummary {
   incomeTotal: number;
+  /** All expenses regardless of payment method (used for display in the Despesas card). */
   expenseTotal: number;
+  /** Expenses that immediately deduct from the bank/digital-wallet balance (Pix, Débito, Transferência). */
+  balanceExpenseTotal: number;
   availableBalance: number;
   goalsReserved: number;
   fixedCostsTotal: number;

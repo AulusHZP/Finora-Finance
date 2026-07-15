@@ -41,7 +41,10 @@ export type CreditCardSummary = {
 
 export type DashboardSummary = {
   incomeTotal: number;
+  /** All expenses regardless of payment method (used for display in the Despesas card). */
   expenseTotal: number;
+  /** Expenses that immediately deduct from the bank/digital-wallet balance (Pix, Débito, Transferência). */
+  balanceExpenseTotal: number;
   availableBalance: number;
   goalsReserved: number;
   fixedCostsTotal: number;
@@ -63,6 +66,14 @@ export type DashboardData = {
 const DASHBOARD_CACHE_TTL_MS = 30_000;
 const dashboardCache = new Map<string, { expiresAt: number; value: DashboardData }>();
 const FIXED_COST_REGEX = /(aluguel|moradia|energia|água|agua|internet|assinatura|condomínio|condominio|conta|seguro|plano)/i;
+
+/**
+ * Payment methods that immediately deduct from the available balance.
+ * Credit (invoice-based) and cash expenses are intentionally excluded:
+ * - Crédito: tracked separately via the credit card invoice summary.
+ * - Dinheiro: cash outflows don't affect the bank/digital-wallet balance.
+ */
+const BALANCE_DEDUCTIBLE_METHODS = new Set(["Pix", "Débito", "Transferência"]);
 
 const normalizeAmount = (amount: number) => Math.abs(Number(amount) || 0);
 
@@ -122,19 +133,21 @@ const buildSummary = (
   const currentMonth = allTransactions.filter((t) => t.date >= currentMonthStart);
   const previousMonths = allTransactions.filter((t) => t.date < currentMonthStart);
 
-  // Calculate carryover (net result of all previous periods)
+  // Calculate carryover (net result of all previous periods).
+  // Only expenses paid via balance-deductible methods reduce the carryover.
   let prevIncome = 0;
   let prevExpense = 0;
   for (const t of previousMonths) {
     const amount = normalizeAmount(t.amount);
     if (t.type === "income") prevIncome += amount;
-    if (t.type === "expense") prevExpense += amount;
+    if (t.type === "expense" && BALANCE_DEDUCTIBLE_METHODS.has(t.method)) prevExpense += amount;
   }
   const carryoverBalance = prevIncome - prevExpense;
 
   // Calculate current window totals
   let incomeTotal = 0;
-  let expenseTotal = 0;
+  let expenseTotal = 0;        // all expenses (display)
+  let balanceExpenseTotal = 0; // only balance-deductible methods (Pix, Débito, Transferência)
   let fixedCostsTotal = 0;
 
   for (const transaction of currentMonth) {
@@ -149,6 +162,11 @@ const buildSummary = (
     if (isExpense) {
       expenseTotal += amount;
 
+      // Only balance-deductible methods (Pix, Débito, Transferência) reduce the available balance.
+      if (BALANCE_DEDUCTIBLE_METHODS.has(transaction.method)) {
+        balanceExpenseTotal += amount;
+      }
+
       const searchableText = `${transaction.title} ${transaction.category}`;
       if (transaction.isFixed || FIXED_COST_REGEX.test(searchableText)) {
         fixedCostsTotal += amount;
@@ -158,13 +176,14 @@ const buildSummary = (
 
   // Available balance = carryover from previous periods (positive or negative —
   // overspending in the past reduces what is available today) + current window
-  // income - expenses + manual offset. This equals the all-time net + offset.
+  // income − balance-deductible expenses + manual offset.
   // Goal reserves are NOT subtracted — goalsReserved is informational only.
-  const availableBalance = carryoverBalance + incomeTotal - expenseTotal + balanceOffset;
+  const availableBalance = carryoverBalance + incomeTotal - balanceExpenseTotal + balanceOffset;
 
   return {
     incomeTotal,
     expenseTotal,
+    balanceExpenseTotal,
     availableBalance,
     goalsReserved,
     fixedCostsTotal,
