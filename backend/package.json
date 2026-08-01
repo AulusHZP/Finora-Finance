@@ -4,6 +4,7 @@
   "private": true,
   "main": "dist/server.js",
   "scripts": {
+    "test": "vitest run",
     "dev": "tsx watch src/server.ts",
     "build": "prisma generate && tsc",
     "start": "prisma migrate deploy && node dist/server.js",
@@ -12,8 +13,12 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
-    "clean:outro-categories": "tsx scripts/clean-outro-categories.ts",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reset": "prisma migrate reset --force",
     "docker:up": "powershell -NoProfile -ExecutionPolicy Bypass -File ./start-backend-docker.ps1"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -33,8 +38,12 @@
     "@types/express-rate-limit": "^5.1.3",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.9.0",
+    "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^4.1.10",
     "prisma": "^5.22.0",
+    "supertest": "^7.2.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.10"
   }
 }

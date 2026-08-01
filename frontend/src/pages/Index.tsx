@@ -1,226 +1,448 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
+import { TrendingUp, TrendingDown, Wallet, AlertTriangle, ChevronRight, Plus } from "lucide-react";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ReferenceLine,
+} from "recharts";
 import { AppLayout } from "@/components/AppLayout";
-import { StatCards } from "@/components/StatCards";
-import { SpendingChart, type CategoryDataItem } from "@/components/SpendingChart";
-import { TransactionTable } from "@/components/TransactionTable";
-import { DashboardGoalsWidget } from "@/components/DashboardGoalsWidget";
-import { DashboardInsights } from "@/components/DashboardInsights";
-import { PaymentMethodBreakdown } from "@/components/PaymentMethodBreakdown";
-import { BudgetsCard } from "@/components/BudgetsCard";
-import { CreditCardInvoiceCard } from "@/components/CreditCardInvoiceCard";
-import { FAB } from "@/components/FAB";
-import { AddTransactionSheet } from "@/components/AddTransactionSheet";
-import { ChevronRight } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { dashboardAPI, type DashboardData, type Transaction } from "@/services/api";
+import { ProgressBar } from "@/components/ProgressBar";
+import { PeriodSelector } from "@/components/PeriodSelector";
+import { AddTransactionModal } from "@/components/AddTransactionModal";
+import { usePeriod } from "@/hooks/usePeriod";
+import { dashboardAPI, type DashboardData, type CategoryBudgetSummary } from "@/services/api";
+import { formatCurrencyBRL } from "@/lib/currency";
 
-const DashboardSkeleton = () => (
-  <div className="space-y-6 lg:space-y-8 pb-12 animate-pulse">
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-5">
-      <div className="col-span-1 md:col-span-6 lg:col-span-5 h-[140px] bg-muted rounded-2xl" />
-      <div className="col-span-1 md:col-span-6 lg:col-span-4 flex flex-col gap-4 lg:gap-5">
-        <div className="flex-1 min-h-[80px] bg-muted rounded-2xl" />
-        <div className="flex-1 min-h-[80px] bg-muted rounded-2xl" />
-      </div>
-      <div className="col-span-1 md:col-span-12 lg:col-span-3 h-[140px] bg-muted rounded-2xl" />
-    </div>
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
-      <div className="lg:col-span-8 h-[300px] bg-muted rounded-3xl" />
-      <div className="lg:col-span-4 h-[300px] bg-muted rounded-3xl" />
-    </div>
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
-      <div className="lg:col-span-8 h-[400px] bg-muted rounded-3xl" />
-      <div className="lg:col-span-4 flex flex-col gap-5 lg:gap-6">
-        <div className="h-[250px] bg-muted rounded-3xl" />
-        <div className="h-[150px] bg-muted rounded-3xl" />
-      </div>
-    </div>
-  </div>
-);
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-// Paleta de azuis para colorir categorias automaticamente
-const CATEGORY_PALETTE = [
-  "#1d4ed8",
-  "#2563eb",
-  "#3b82f6",
-  "#60a5fa",
-  "#93c5fd",
-  "#bfdbfe",
-  "#1e3a8a",
-  "#1e40af",
-];
-
-const normalizeTransactionType = (type: unknown): "income" | "expense" => {
-  const v = String(type || "").trim().toLowerCase();
-  if (["income", "receita", "entrada", "credit", "credito", "crédito"].includes(v))
-    return "income";
-  return "expense";
-};
-
-const buildCategoryData = (transactions: Transaction[]): CategoryDataItem[] => {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth(); // 0-indexed
-
-  const map = new Map<string, number>();
-
-  transactions.forEach((tx) => {
-    if (normalizeTransactionType(tx.type) !== "expense") return;
-
-    // Filtra apenas o mês corrente
-    const datePart = tx.date.split("T")[0];
-    const [year, month] = datePart.split("-").map(Number);
-    if (year !== currentYear || month - 1 !== currentMonth) return;
-
-    const category = tx.category || "Outros";
-    const amount =
-      typeof tx.amount === "number"
-        ? Math.abs(tx.amount)
-        : Math.abs(Number(tx.amount) || 0);
-
-    map.set(category, (map.get(category) ?? 0) + amount);
-  });
-
-  return Array.from(map.entries())
-    .sort((a, b) => b[1] - a[1])
-    .map(([name, value], i) => ({
-      name,
-      value,
-      color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length],
-    }));
-};
-
-const Index = () => {
-  const navigate = useNavigate();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  const loadDashboardData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setLoadError(null);
-
-      const dashboardResponse = await dashboardAPI.getDashboard();
-      setDashboard(dashboardResponse);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Falha ao carregar dados do dashboard");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
-
-  useEffect(() => {
-    const handleTransactionsUpdated = () => {
-      loadDashboardData();
-    };
-
-    const handleWindowFocus = () => {
-      loadDashboardData();
-    };
-
-    window.addEventListener("transactions-updated", handleTransactionsUpdated);
-    window.addEventListener("focus", handleWindowFocus);
-
-    return () => {
-      window.removeEventListener("transactions-updated", handleTransactionsUpdated);
-      window.removeEventListener("focus", handleWindowFocus);
-    };
-  }, [loadDashboardData]);
-
-  const transactions = useMemo(() => dashboard?.transactions ?? [], [dashboard]);
-  const goals = dashboard?.goals ?? [];
-  const categoryData = useMemo(() => buildCategoryData(transactions), [transactions]);
+function SummaryCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  variant = "default",
+}: {
+  title: string;
+  value: string;
+  subtitle?: string;
+  icon: React.ElementType;
+  variant?: "default" | "warning" | "danger" | "income";
+}) {
+  const iconColors = {
+    default: "text-blue-500 bg-blue-50",
+    warning: "text-amber-500 bg-amber-50",
+    danger: "text-red-500 bg-red-50",
+    income: "text-emerald-500 bg-emerald-50",
+  };
 
   return (
-    <AppLayout>
-      {/* Dashboard Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 lg:mb-8 gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-extrabold text-foreground tracking-tight">Visão Geral</h1>
-          <p className="text-sm text-muted-foreground mt-1">Acompanhe seu progresso financeiro dos últimos 30 dias.</p>
+    <div className="bg-card rounded-2xl p-5 shadow-sm border border-border flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${iconColors[variant]}`}>
+          <Icon className="w-4 h-4" />
         </div>
-        <button
-          onClick={() => setSheetOpen(true)}
-          className="hidden lg:flex items-center justify-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:shadow-lg hover:opacity-90 hover:-translate-y-0.5 transition-all duration-300"
-        >
-          + Nova Transação
-        </button>
+      </div>
+      <p className="text-2xl font-bold text-foreground leading-tight">{value}</p>
+      {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+    </div>
+  );
+}
+
+function AlertCategoryCard({ cat, alertThreshold }: { cat: CategoryBudgetSummary; alertThreshold: number }) {
+  const badgeClass =
+    cat.status === "danger"
+      ? "bg-red-100 text-red-700"
+      : "bg-amber-100 text-amber-700";
+  const badgeLabel = cat.status === "danger" ? "Limite estourado" : "Perto do limite";
+
+  return (
+    <div
+      className={`rounded-xl p-4 border ${
+        cat.status === "danger" ? "border-red-200 bg-red-50/50" : "border-amber-200 bg-amber-50/50"
+      }`}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+            style={{ backgroundColor: cat.categoryColor }}
+          >
+            {cat.categoryName[0]}
+          </div>
+          <span className="text-sm font-semibold text-foreground">{cat.categoryName}</span>
+        </div>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badgeClass}`}>{badgeLabel}</span>
       </div>
 
-      {loadError && (
-        <div className="flex items-center gap-3 mb-4 p-3 bg-destructive/10 rounded-lg">
-          <p className="text-xs text-destructive flex-1">{loadError}</p>
-          <button
-            onClick={loadDashboardData}
-            className="text-xs font-medium text-destructive underline hover:no-underline shrink-0"
-          >
-            Tentar novamente
-          </button>
-        </div>
-      )}
-      
-      {loading ? (
-        <DashboardSkeleton />
-      ) : (
-        <div className="space-y-6 lg:space-y-8 pb-12">
-          {/* ROW 1: Highlight Cards */}
-          <StatCards summary={dashboard?.summary} />
+      <div className="text-xs text-muted-foreground mb-2">
+        {formatCurrencyBRL(cat.spent)} de {cat.limit !== null ? formatCurrencyBRL(cat.limit) : "—"}
+      </div>
 
-          {/* ROW 2: Chart & Goals */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
-            <div className="lg:col-span-8">
-              <SpendingChart transactions={transactions} categoryData={categoryData} />
-            </div>
-            <div className="lg:col-span-4">
-              <DashboardGoalsWidget goals={goals} />
-            </div>
-          </div>
+      <ProgressBar
+        value={cat.usagePct ?? 0}
+        status={cat.status}
+        alertThreshold={alertThreshold}
+        height={5}
+      />
+    </div>
+  );
+}
 
-          {/* ROW 3: Bottom Section Split (Table + Insights/Payments) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
-            {/* Table */}
-            <div className="lg:col-span-8 sticky top-6">
-              <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md rounded-2xl border border-white/70 dark:border-white/10 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col max-h-[650px] transition-all duration-300">
-                <div className="flex items-center justify-between mb-6 shrink-0">
-                  <h2 className="text-lg font-semibold text-foreground">Últimas Transações</h2>
-                  <Link to="/transactions" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
-                    Ver todas <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </div>
-                <div className="flex-1 overflow-y-auto pr-2 [scrollbar-gutter:stable] -mr-2">
-                  <TransactionTable
-                    limit={10}
-                    showSearch={false}
-                    transactionsData={transactions}
-                    onRowClick={() => navigate("/transactions")}
-                  />
-                </div>
-              </div>
-            </div>
+// ─── Custom tooltip for charts ────────────────────────────────────────────────
 
-            {/* Right Column: Budgets, Insights & Payments */}
-            <div className="lg:col-span-4 flex flex-col gap-5 lg:gap-6">
-              <BudgetsCard budgets={dashboard?.budgets ?? []} />
-              {dashboard?.summary.creditCard && (
-                <CreditCardInvoiceCard creditCard={dashboard.summary.creditCard} />
-              )}
-              <DashboardInsights transactions={transactions} goals={goals} />
-              <PaymentMethodBreakdown transactions={transactions} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      <FAB onClick={() => setSheetOpen(true)} />
-      <AddTransactionSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
-    </AppLayout>
+const CurrencyTooltip = ({ active, payload }: { active?: boolean; payload?: { name: string; value: number }[] }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-sm">
+      <p className="font-medium text-foreground">{payload[0].name}</p>
+      <p className="text-muted-foreground">{formatCurrencyBRL(payload[0].value)}</p>
+    </div>
   );
 };
 
-export default Index;
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+
+const Skeleton = ({ className = "" }: { className?: string }) => (
+  <div className={`animate-pulse bg-muted rounded-xl ${className}`} />
+);
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+export default function Dashboard() {
+  const { year, month } = usePeriod();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setData(await dashboardAPI.get(year, month));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao carregar dashboard");
+    } finally {
+      setLoading(false);
+    }
+  }, [year, month]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Re-load after adding a transaction
+  const handleTransactionSaved = useCallback(() => load(), [load]);
+
+  const today = new Date().getDate();
+
+  return (
+    <AppLayout>
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <PeriodSelector className="mt-1" />
+        </div>
+        <button
+          onClick={() => setModalOpen(true)}
+          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+        >
+          <Plus className="w-4 h-4" />
+          Nova transação
+        </button>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* ── Summary cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {loading ? (
+          <>
+            <Skeleton className="h-28" />
+            <Skeleton className="h-28" />
+            <Skeleton className="h-28" />
+            <Skeleton className="h-28" />
+          </>
+        ) : data ? (
+          <>
+            <SummaryCard
+              title="Total Gasto"
+              value={formatCurrencyBRL(data.summary.totalSpent)}
+              subtitle={data.summary.totalLimit ? `de ${formatCurrencyBRL(data.summary.totalLimit)}` : undefined}
+              icon={TrendingDown}
+              variant={data.summary.totalLimit && data.summary.totalSpent > data.summary.totalLimit ? "danger" : "default"}
+            />
+            <SummaryCard
+              title="Limite Geral"
+              value={data.summary.totalLimit ? formatCurrencyBRL(data.summary.totalLimit) : "Não definido"}
+              icon={Wallet}
+              variant="default"
+            />
+            <SummaryCard
+              title="Disponível"
+              value={data.summary.available !== null ? formatCurrencyBRL(data.summary.available) : "—"}
+              subtitle={data.summary.available === null ? "Defina um limite geral" : undefined}
+              icon={Wallet}
+              variant={
+                data.summary.available === null ? "default"
+                : data.summary.available < 0 ? "danger"
+                : data.summary.available < (data.summary.totalLimit ?? 0) * 0.2 ? "warning"
+                : "default"
+              }
+            />
+            <SummaryCard
+              title="Receitas"
+              value={formatCurrencyBRL(data.summary.totalIncome)}
+              icon={TrendingUp}
+              variant="income"
+            />
+          </>
+        ) : null}
+      </div>
+
+      {/* ── General limit progress bar ── */}
+      {!loading && data?.summary.totalLimit && (
+        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Consumo do limite geral</p>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrencyBRL(data.summary.totalSpent)} de {formatCurrencyBRL(data.summary.totalLimit)}
+              </p>
+            </div>
+            {data.summary.totalLimit && data.summary.totalSpent / data.summary.totalLimit >= 0.8 && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                Perto do limite
+              </span>
+            )}
+            {data.summary.totalLimit && data.summary.totalSpent >= data.summary.totalLimit && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                Limite estourado
+              </span>
+            )}
+          </div>
+          <ProgressBar
+            value={(data.summary.totalSpent / data.summary.totalLimit) * 100}
+            height={8}
+          />
+        </div>
+      )}
+
+      {/* ── Alert categories ── */}
+      {!loading && data && data.alertCategories.length > 0 && (
+        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <p className="text-sm font-semibold text-foreground">Categorias em alerta</p>
+              <span className="text-xs text-muted-foreground">
+                {data.alertCategories.length} categoria{data.alertCategories.length > 1 ? "s" : ""}
+              </span>
+            </div>
+            <Link
+              to="/limits"
+              className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-0.5"
+            >
+              Ver limites <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {data.alertCategories.map((cat) => (
+              <AlertCategoryCard key={cat.categoryId} cat={cat} alertThreshold={80} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Charts row ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Donut chart */}
+        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border">
+          <p className="text-sm font-semibold text-foreground mb-1">Gastos por categoria</p>
+          <p className="text-xs text-muted-foreground mb-4">Total no mês</p>
+
+          {loading ? (
+            <Skeleton className="h-48" />
+          ) : !data || data.donutData.length === 0 ? (
+            <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
+              Nenhum gasto registrado
+            </div>
+          ) : (
+            <div className="flex gap-6 items-center">
+              <ResponsiveContainer width={160} height={160}>
+                <PieChart>
+                  <Pie
+                    data={data.donutData}
+                    dataKey="amount"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={75}
+                    paddingAngle={2}
+                  >
+                    {data.donutData.map((entry) => (
+                      <Cell key={entry.categoryId} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CurrencyTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-col gap-2 flex-1 min-w-0">
+                {data.donutData.slice(0, 5).map((entry) => (
+                  <div key={entry.categoryId} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: entry.color }}
+                      />
+                      <span className="text-xs text-muted-foreground truncate">{entry.name}</span>
+                    </div>
+                    <span className="text-xs font-medium text-foreground flex-shrink-0">
+                      {formatCurrencyBRL(entry.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Line chart */}
+        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border">
+          <p className="text-sm font-semibold text-foreground mb-1">Evolução dos gastos</p>
+          <p className="text-xs text-muted-foreground mb-4">Acumulado no mês, dia a dia</p>
+
+          {loading ? (
+            <Skeleton className="h-48" />
+          ) : !data || data.lineData.every((d) => d.cumulative === 0) ? (
+            <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
+              Nenhum gasto registrado
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={data.lineData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="day"
+                  tick={{ fontSize: 11, fill: "#94a3b8" }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "#94a3b8" }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  formatter={(v: number) => [formatCurrencyBRL(v), "Acumulado"]}
+                  labelFormatter={(l) => `Dia ${l}`}
+                  contentStyle={{
+                    background: "white",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "12px",
+                    fontSize: "12px",
+                  }}
+                />
+                {/* Solid line up to today */}
+                <Line
+                  type="monotone"
+                  data={data.lineData.filter((d) => d.day <= today)}
+                  dataKey="cumulative"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 4, fill: "#10b981" }}
+                />
+                {/* Dotted line for future days */}
+                {data.lineData.some((d) => d.day > today) && (
+                  <Line
+                    type="monotone"
+                    data={data.lineData.filter((d) => d.day >= today)}
+                    dataKey="cumulative"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                )}
+                <ReferenceLine x={today} stroke="#94a3b8" strokeDasharray="3 3" />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* ── Recent transactions ── */}
+      <div className="bg-card rounded-2xl p-5 shadow-sm border border-border">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm font-semibold text-foreground">Últimas transações</p>
+          <Link
+            to="/transactions"
+            className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-0.5"
+          >
+            Ver todas <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-12" />
+            ))}
+          </div>
+        ) : !data || data.recentTransactions.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            Nenhuma transação neste mês
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {data.recentTransactions.map((tx) => (
+              <div key={tx.id} className="flex items-center gap-3 py-3">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                  style={{ backgroundColor: tx.category.color }}
+                >
+                  {tx.category.name[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{tx.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {tx.category.name} · {new Date(tx.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}
+                  </p>
+                </div>
+                <span
+                  className={`text-sm font-semibold flex-shrink-0 ${
+                    tx.category.isIncome ? "text-emerald-600" : "text-foreground"
+                  }`}
+                >
+                  {tx.category.isIncome ? "+" : "–"}{formatCurrencyBRL(tx.amount)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <AddTransactionModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSaved={handleTransactionSaved}
+      />
+    </AppLayout>
+  );
+}

@@ -1,206 +1,218 @@
+/**
+ * transaction.service.ts
+ *
+ * Rebuilt for new schema:
+ * - amount: Decimal(12,2) — no float
+ * - categoryId: always required (Receitas = a category with isIncome=true)
+ * - date: YYYY-MM-DD string (no timezone drift)
+ * - no method, no isFixed, no recurringTransactionId
+ */
+
 import { prisma } from "../config/prisma";
 import { HttpError } from "../utils/http-error";
 
-/**
- * Finds the "Outro" fallback category, creating it if missing.
- * The re-find after a failed create handles concurrent requests racing to
- * create it at the same time (the schema cannot enforce uniqueness here
- * because parentId is NULL for root categories).
- */
-const findOrCreateOutroCategory = async () => {
-  const existing = await prisma.category.findFirst({ where: { name: "Outro", parentId: null } });
-  if (existing) return existing;
-
-  try {
-    return await prisma.category.create({
-      data: { name: "Outro", type: "expense", emoji: "📌" }
-    });
-  } catch {
-    const raced = await prisma.category.findFirst({ where: { name: "Outro", parentId: null } });
-    if (raced) return raced;
-    throw new Error("Failed to resolve fallback category");
-  }
-};
-
-/** Resolves a category name to its ID, searching parents and subcategories. */
-export const resolveCategoryId = async (name: string): Promise<string | null> => {
-  if (!name) return null;
-
-  // Try main category first, then any subcategory
-  const existing = await prisma.category.findFirst({ where: { name } });
-  if (existing) return existing.id;
-
-  // Fallback seguro: categoria desconhecida (ou "Outro"/"Outros") cai em "Outro"
-  const fallback = await findOrCreateOutroCategory();
-  return fallback.id;
-};
-
-export const getCategories = async () => {
-  const mainCategories = await prisma.category.findMany({
-    where: { parentId: null },
-    include: { subcategories: true }
-  });
-  return mainCategories;
-};
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type CreateTransactionInput = {
-  userId: string;
-  title: string;
-  amount: number;
-  type: "income" | "expense";
-  isFixed?: boolean;
-  category: string;
-  method: string;
-  date: Date;
+  categoryId: string;
+  description: string;
+  amount: number; // always positive
+  date: string;   // YYYY-MM-DD
 };
 
-type UpdateTransactionInput = {
-  title?: string;
-  amount?: number;
-  type?: "income" | "expense";
-  isFixed?: boolean;
-  category?: string;
-  method?: string;
-  date?: Date;
+type UpdateTransactionInput = Partial<CreateTransactionInput>;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Validates that the category exists and belongs to the user. */
+const validateCategory = async (categoryId: string, userId: string) => {
+  const cat = await prisma.category.findFirst({ where: { id: categoryId, userId } });
+  if (!cat) throw new HttpError(404, "Categoria não encontrada");
+  return cat;
 };
 
-export const createTransaction = async (input: CreateTransactionInput) => {
-  const categoryId = input.category ? await resolveCategoryId(input.category) : null;
-
-  const transaction = await prisma.transaction.create({
-    data: {
-      userId: input.userId,
-      title: input.title,
-      amount: input.amount,
-      type: input.type,
-      isFixed: input.isFixed ?? false,
-      categoryId,
-      method: input.method,
-      date: input.date
-    },
-    include: { category: true }
-  });
-
-  return {
-    ...transaction,
-    category: transaction.category?.name || ""
-  };
+/** Validates YYYY-MM-DD format. */
+const validateDate = (date: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new HttpError(400, "Data inválida. Use o formato YYYY-MM-DD");
+  }
 };
 
-export const createTransactionsBulk = async (inputs: CreateTransactionInput[]) => {
-  if (inputs.length === 0) {
-    return { count: 0 };
+// ─── Queries ──────────────────────────────────────────────────────────────────
+
+export const getTransactionsByUserId = async (
+  userId: string,
+  filters?: { year?: number; month?: number; categoryId?: string }
+) => {
+  let dateFilter: { gte?: string; lt?: string } | undefined;
+
+  if (filters?.year && filters?.month) {
+    const y = filters.year;
+    const m = String(filters.month).padStart(2, "0");
+    const nextMonth = filters.month === 12 ? 1 : filters.month + 1;
+    const nextYear = filters.month === 12 ? y + 1 : y;
+    const nm = String(nextMonth).padStart(2, "0");
+    dateFilter = {
+      gte: `${y}-${m}-01`,
+      lt: `${nextYear}-${nm}-01`,
+    };
   }
 
-  // Resolve each distinct category name once (instead of once per row),
-  // then insert everything in a single createMany.
-  const distinctNames = [...new Set(inputs.map((input) => input.category).filter(Boolean))];
-  const categoryIdByName = new Map<string, string | null>();
-
-  for (const name of distinctNames) {
-    categoryIdByName.set(name, await resolveCategoryId(name));
-  }
-
-  const result = await prisma.transaction.createMany({
-    data: inputs.map((input) => ({
-      userId: input.userId,
-      title: input.title,
-      amount: input.amount,
-      type: input.type,
-      isFixed: input.isFixed ?? false,
-      categoryId: input.category ? categoryIdByName.get(input.category) ?? null : null,
-      method: input.method,
-      date: input.date
-    }))
-  });
-
-  return { count: result.count };
-};
-
-export const deleteImportedTransactionsByUser = async (userId: string) => {
-  const result = await prisma.transaction.deleteMany({
+  return prisma.transaction.findMany({
     where: {
       userId,
-      method: "Importação CSV"
-    }
-  });
-
-  return result;
-};
-
-export const getTransactionsByUserId = async (userId: string) => {
-  const transactions = await prisma.transaction.findMany({
-    where: { userId },
-    orderBy: { date: "desc" },
-    include: { category: true }
-  });
-
-  return transactions.map(t => ({
-    ...t,
-    category: t.category?.name || "Outros"
-  }));
-};
-
-export const getTransactionById = async (transactionId: string, userId: string) => {
-  const transaction = await prisma.transaction.findFirst({
-    where: {
-      id: transactionId,
-      userId
-    }
-  });
-
-  if (!transaction) {
-    throw new HttpError(404, "Transaction not found");
-  }
-
-  return transaction;
-};
-
-export const updateTransaction = async (transactionId: string, userId: string, data: UpdateTransactionInput) => {
-  const transaction = await prisma.transaction.findFirst({
-    where: {
-      id: transactionId,
-      userId
-    }
-  });
-
-  if (!transaction) {
-    throw new HttpError(404, "Transaction not found");
-  }
-
-  const { category, ...rest } = data;
-  const categoryId = category !== undefined ? await resolveCategoryId(category) : undefined;
-
-  const updated = await prisma.transaction.update({
-    where: { id: transactionId },
-    data: {
-      ...rest,
-      ...(categoryId !== undefined ? { categoryId } : {})
+      ...(dateFilter ? { date: dateFilter } : {}),
+      ...(filters?.categoryId ? { categoryId: filters.categoryId } : {}),
     },
-    include: { category: true }
+    include: {
+      category: {
+        select: { id: true, name: true, icon: true, color: true, isIncome: true },
+      },
+    },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
   });
-
-  return {
-    ...updated,
-    category: updated.category?.name || ""
-  };
 };
 
-export const deleteTransaction = async (transactionId: string, userId: string) => {
-  const transaction = await prisma.transaction.findFirst({
-    where: {
-      id: transactionId,
-      userId
-    }
+export const getTransactionById = async (id: string, userId: string) => {
+  const tx = await prisma.transaction.findFirst({
+    where: { id, userId },
+    include: {
+      category: { select: { id: true, name: true, icon: true, color: true, isIncome: true } },
+    },
   });
+  if (!tx) throw new HttpError(404, "Transação não encontrada");
+  return tx;
+};
 
-  if (!transaction) {
-    throw new HttpError(404, "Transaction not found");
+// ─── Mutations ────────────────────────────────────────────────────────────────
+
+export const createTransaction = async (userId: string, input: CreateTransactionInput) => {
+  validateDate(input.date);
+  if (input.amount <= 0) throw new HttpError(400, "O valor deve ser positivo");
+  await validateCategory(input.categoryId, userId);
+
+  return prisma.transaction.create({
+    data: {
+      userId,
+      categoryId: input.categoryId,
+      description: input.description.trim(),
+      amount: input.amount,
+      date: input.date,
+    },
+    include: {
+      category: { select: { id: true, name: true, icon: true, color: true, isIncome: true } },
+    },
+  });
+};
+
+export const updateTransaction = async (
+  id: string,
+  userId: string,
+  input: UpdateTransactionInput
+) => {
+  const tx = await getTransactionById(id, userId);
+
+  if (input.date) validateDate(input.date);
+  if (input.amount !== undefined && input.amount <= 0) {
+    throw new HttpError(400, "O valor deve ser positivo");
+  }
+  if (input.categoryId && input.categoryId !== tx.categoryId) {
+    await validateCategory(input.categoryId, userId);
   }
 
-  await prisma.transaction.delete({
-    where: { id: transactionId }
+  return prisma.transaction.update({
+    where: { id },
+    data: {
+      ...(input.categoryId ? { categoryId: input.categoryId } : {}),
+      ...(input.description ? { description: input.description.trim() } : {}),
+      ...(input.amount !== undefined ? { amount: input.amount } : {}),
+      ...(input.date ? { date: input.date } : {}),
+    },
+    include: {
+      category: { select: { id: true, name: true, icon: true, color: true, isIncome: true } },
+    },
+  });
+};
+
+export const deleteTransaction = async (id: string, userId: string) => {
+  await getTransactionById(id, userId);
+  await prisma.transaction.delete({ where: { id } });
+  return { success: true };
+};
+
+// ─── Aggregations ─────────────────────────────────────────────────────────────
+
+/**
+ * Returns a map of categoryId → totalSpent for expense transactions in a month.
+ * Excludes income categories (isIncome=true).
+ */
+export const getSpentByCategoryForMonth = async (
+  userId: string,
+  year: number,
+  month: number
+): Promise<Map<string, number>> => {
+  const y = year;
+  const m = String(month).padStart(2, "0");
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? y + 1 : y;
+  const nm = String(nextMonth).padStart(2, "0");
+
+  const rows = await prisma.transaction.findMany({
+    where: {
+      userId,
+      date: { gte: `${y}-${m}-01`, lt: `${nextYear}-${nm}-01` },
+      category: { isIncome: false },
+    },
+    select: { categoryId: true, amount: true },
   });
 
-  return { success: true };
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    const prev = map.get(row.categoryId) ?? 0;
+    map.set(row.categoryId, prev + Number(row.amount));
+  }
+  return map;
+};
+
+/**
+ * Returns cumulative daily spending for a month (for the LineChart).
+ * Returns an array of { day: number, cumulative: number } for days 1..daysInMonth.
+ */
+export const getCumulativeDailySpending = async (
+  userId: string,
+  year: number,
+  month: number
+): Promise<{ day: number; cumulative: number }[]> => {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const y = year;
+  const m = String(month).padStart(2, "0");
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? y + 1 : y;
+  const nm = String(nextMonth).padStart(2, "0");
+
+  const rows = await prisma.transaction.findMany({
+    where: {
+      userId,
+      date: { gte: `${y}-${m}-01`, lt: `${nextYear}-${nm}-01` },
+      category: { isIncome: false },
+    },
+    select: { date: true, amount: true },
+    orderBy: { date: "asc" },
+  });
+
+  // Group by day number
+  const byDay = new Map<number, number>();
+  for (const row of rows) {
+    const day = parseInt(row.date.split("-")[2], 10);
+    byDay.set(day, (byDay.get(day) ?? 0) + Number(row.amount));
+  }
+
+  // Build cumulative array
+  const result: { day: number; cumulative: number }[] = [];
+  let cumulative = 0;
+  for (let day = 1; day <= daysInMonth; day++) {
+    cumulative += byDay.get(day) ?? 0;
+    result.push({ day, cumulative });
+  }
+  return result;
 };
