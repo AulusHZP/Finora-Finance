@@ -119,7 +119,7 @@ const Skeleton = ({ className = "" }: { className?: string }) => (
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const { year, month } = usePeriod();
+  const { year, month, isCurrentMonth } = usePeriod();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -358,29 +358,15 @@ export default function Dashboard() {
                     fontSize: "12px",
                   }}
                 />
-                {/* Solid line up to today */}
                 <Line
                   type="monotone"
-                  data={data.lineData.filter((d) => d.day <= today)}
                   dataKey="cumulative"
                   stroke="#10b981"
                   strokeWidth={2.5}
                   dot={false}
                   activeDot={{ r: 4, fill: "#10b981" }}
                 />
-                {/* Dotted line for future days */}
-                {data.lineData.some((d) => d.day > today) && (
-                  <Line
-                    type="monotone"
-                    data={data.lineData.filter((d) => d.day >= today)}
-                    dataKey="cumulative"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    dot={false}
-                  />
-                )}
-                <ReferenceLine x={today} stroke="#94a3b8" strokeDasharray="3 3" />
+                {isCurrentMonth && <ReferenceLine x={today} stroke="#94a3b8" strokeDasharray="3 3" />}
               </LineChart>
             </ResponsiveContainer>
           )}

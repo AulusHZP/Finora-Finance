@@ -212,7 +212,11 @@ export default function Categories() {
   );
 
   // Expense categories with spend, sorted desc
-  const expenseCategories = categories.filter((c) => !c.isIncome);
+  const expenseCategories = useMemo(
+    () => categories.filter((c) => !c.isIncome),
+    [categories]
+  );
+
   const ranking = useMemo(
     () =>
       expenseCategories
