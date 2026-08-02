@@ -1,324 +1,298 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Plus, Search, Trash2 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+} from "recharts";
 import { AppLayout } from "@/components/AppLayout";
-import { TransactionTable } from "@/components/TransactionTable";
-import { AddTransactionSheet } from "@/components/AddTransactionSheet";
-import { CategoryFilter } from "@/components/CategoryFilter";
-import { CategoryPicker } from "@/components/CategoryPicker";
-import { transactionAPI, type Transaction } from "@/services/api";
-import { parseCurrencyInputBRL } from "@/lib/currency";
-import { buildTransactionsCsv, downloadCsv } from "@/lib/exportCsv";
-import { RecurringManageSheet } from "@/components/RecurringManageSheet";
+import { PeriodSelector } from "@/components/PeriodSelector";
+import { AddTransactionModal } from "@/components/AddTransactionModal";
+import { usePeriod, formatPeriodLong } from "@/hooks/usePeriod";
+import { transactionAPI, categoryAPI, type Transaction, type Category } from "@/services/api";
+import { formatCurrencyBRL } from "@/lib/currency";
 
-const Transactions = () => {
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [recurringOpen, setRecurringOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
-  const [method, setMethod] = useState("");
-  const [date, setDate] = useState("");
-  const [type, setType] = useState<"income" | "expense">("expense");
-  const [isFixed, setIsFixed] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [clearingCsv, setClearingCsv] = useState(false);
-  const [onlyCsvImported, setOnlyCsvImported] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [transactionList, setTransactionList] = useState<Transaction[]>([]);
+const Skeleton = ({ className = "" }: { className?: string }) => (
+  <div className={`animate-pulse bg-muted rounded-xl ${className}`} />
+);
+
+export default function Transactions() {
+  const { year, month } = usePeriod();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [activeCategoryId, setActiveCategoryId] = useState<string>("all");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
-  const loadTransactions = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
-      const data = await transactionAPI.getTransactions();
-      setTransactionList(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao carregar transações");
+      const [txs, cats] = await Promise.all([
+        transactionAPI.list({ year, month }),
+        categoryAPI.list(),
+      ]);
+      setTransactions(txs);
+      setCategories(cats);
+    } catch {
+      // keep previous data on error
     } finally {
       setLoading(false);
     }
+  }, [year, month]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleSaved = useCallback(() => load(), [load]);
+
+  const handleDelete = useCallback(async (id: string) => {
+    if (!confirm("Excluir esta transação?")) return;
+    setDeleting(id);
+    try {
+      await transactionAPI.delete(id);
+      setTransactions((prev) => prev.filter((t) => t.id !== id));
+    } catch {
+      alert("Erro ao excluir transação");
+    } finally {
+      setDeleting(null);
+    }
   }, []);
 
-  useEffect(() => {
-    loadTransactions();
-  }, [loadTransactions]);
+  // ── Filter chips — categories that have transactions this month ──────────────
+  const activeCategories = useMemo(() => {
+    const ids = new Set(transactions.map((t) => t.categoryId));
+    return categories.filter((c) => ids.has(c.id));
+  }, [transactions, categories]);
 
-  useEffect(() => {
-    const handleTransactionsUpdated = () => {
-      loadTransactions();
-    };
+  // ── Filtered transactions ────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    return transactions.filter((tx) => {
+      if (activeCategoryId !== "all" && tx.categoryId !== activeCategoryId) return false;
+      if (search && !tx.description.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [transactions, activeCategoryId, search]);
 
-    window.addEventListener("transactions-updated", handleTransactionsUpdated);
-    return () => {
-      window.removeEventListener("transactions-updated", handleTransactionsUpdated);
-    };
-  }, [loadTransactions]);
-
-  const handleTransactionAdded = () => {
-    loadTransactions();
-  };
-
-  useEffect(() => {
-    if (!selectedTransaction) {
-      return;
-    }
-
-    setTitle(selectedTransaction.title);
-    setAmount(String(selectedTransaction.amount).replace(".", ","));
-    setCategory(selectedTransaction.category);
-    setMethod(selectedTransaction.method);
-    setDate(selectedTransaction.date.split("T")[0]);
-    setType(selectedTransaction.type);
-    setIsFixed(Boolean(selectedTransaction.isFixed));
-    setError(null);
-  }, [selectedTransaction]);
-
-  const openDetails = (transaction: Transaction) => {
-    setNotice(null);
-    setSelectedTransaction(transaction);
-    setDetailsOpen(true);
-  };
-
-  const closeDetails = () => {
-    setDetailsOpen(false);
-    setSelectedTransaction(null);
-    setError(null);
-  };
-
-  const handleClearImportedCsv = async () => {
-    const confirmed = window.confirm("Deseja apagar todas as transações importadas via CSV?");
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      setClearingCsv(true);
-      setError(null);
-      setNotice(null);
-
-      const result = await transactionAPI.clearImportedTransactions();
-      setNotice(`${result.deleted} transações importadas foram apagadas.`);
-      if (detailsOpen) {
-        closeDetails();
+  // ── Horizontal bar chart data (expense categories only, sorted) ───────────────
+  const rankingData = useMemo(() => {
+    const byCategory = new Map<string, { name: string; color: string; amount: number }>();
+    for (const tx of transactions) {
+      if (tx.category.isIncome) continue;
+      const prev = byCategory.get(tx.categoryId);
+      if (prev) {
+        prev.amount += tx.amount;
+      } else {
+        byCategory.set(tx.categoryId, {
+          name: tx.category.name,
+          color: tx.category.color,
+          amount: tx.amount,
+        });
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao limpar transações importadas");
-    } finally {
-      setClearingCsv(false);
     }
-  };
+    return Array.from(byCategory.values()).sort((a, b) => b.amount - a.amount);
+  }, [transactions]);
 
-  const handleSaveChanges = async () => {
-    if (!selectedTransaction) {
-      return;
-    }
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr + "T12:00:00").toLocaleDateString("pt-BR", {
+      day: "numeric",
+      month: "short",
+    });
 
-    const parsedAmount = parseCurrencyInputBRL(amount);
-    if (!title.trim() || parsedAmount === null || parsedAmount <= 0 || !category.trim() || !method.trim() || !date) {
-      setError("Preencha todos os campos corretamente.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setError(null);
-
-      await transactionAPI.updateTransaction(selectedTransaction.id, {
-        title: title.trim(),
-        amount: parsedAmount,
-        type,
-        isFixed,
-        category: category.trim(),
-        method: method.trim(),
-        date
-      });
-
-      closeDetails();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao salvar transação");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteTransaction = async () => {
-    if (!selectedTransaction) {
-      return;
-    }
-
-    const confirmed = window.confirm("Deseja apagar esta transação?");
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      setDeleting(true);
-      setError(null);
-      await transactionAPI.deleteTransaction(selectedTransaction.id);
-      closeDetails();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao apagar transação");
-    } finally {
-      setDeleting(false);
-    }
-  };
+  const periodLabel = formatPeriodLong(year, month);
 
   return (
     <AppLayout>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Transações</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Visualize e gerencie toda a atividade</p>
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Transações</h1>
+          <p className="text-sm text-muted-foreground capitalize">{periodLabel}</p>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
-          <CategoryFilter value={categoryFilter} onChange={setCategoryFilter} />
+        <button
+          onClick={() => setModalOpen(true)}
+          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+        >
+          <Plus className="w-4 h-4" />
+          Nova transação
+        </button>
+      </div>
+
+      <div className="flex items-center justify-end mb-4">
+        <PeriodSelector />
+      </div>
+
+      {/* ── Horizontal bar chart ── */}
+      {!loading && rankingData.length > 0 && (
+        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border mb-6">
+          <p className="text-sm font-semibold text-foreground mb-1">Onde você mais gasta</p>
+          <p className="text-xs text-muted-foreground mb-4">Ranking de categorias no período</p>
+          <ResponsiveContainer width="100%" height={rankingData.length * 36 + 20}>
+            <BarChart
+              data={rankingData}
+              layout="vertical"
+              margin={{ top: 0, right: 10, left: 60, bottom: 0 }}
+            >
+              <XAxis
+                type="number"
+                tick={{ fontSize: 11, fill: "#94a3b8" }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) =>
+                  v >= 1000 ? `R$ ${(v / 1000).toFixed(1)} mil` : formatCurrencyBRL(v)
+                }
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 12, fill: "#64748b" }}
+                tickLine={false}
+                axisLine={false}
+                width={58}
+              />
+              <Tooltip
+                formatter={(v: number) => [formatCurrencyBRL(v), "Total"]}
+                contentStyle={{
+                  background: "white",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "12px",
+                  fontSize: "12px",
+                }}
+              />
+              <Bar dataKey="amount" radius={[0, 6, 6, 0]} barSize={18}>
+                {rankingData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* ── Search + filters ── */}
+      <div className="bg-card rounded-2xl p-4 shadow-sm border border-border mb-6">
+        {/* Search */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar transação..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+            {filtered.length} resultado(s)
+          </span>
+        </div>
+
+        {/* Category filter chips */}
+        <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setOnlyCsvImported((prev) => !prev)}
-            className={`h-11 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-default ${
-              onlyCsvImported
-                ? "bg-card border border-border text-foreground"
-                : "bg-muted text-muted-foreground hover:bg-hover"
+            onClick={() => setActiveCategoryId("all")}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+              activeCategoryId === "all"
+                ? "bg-foreground text-background"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
-            {onlyCsvImported ? "Mostrando: Somente CSV" : "Filtrar: Somente CSV"}
+            Todas
           </button>
-          <button
-            onClick={() => setRecurringOpen(true)}
-            className="h-11 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium bg-muted text-muted-foreground hover:bg-hover transition-default"
-          >
-            🔁 Recorrentes
-          </button>
-          <button
-            onClick={() => downloadCsv(`finora-transacoes-${new Date().toISOString().split("T")[0]}.csv`, buildTransactionsCsv(transactionList))}
-            disabled={transactionList.length === 0}
-            className="h-11 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-medium bg-muted text-muted-foreground hover:bg-hover transition-default disabled:opacity-50"
-          >
-            ⬇ Exportar CSV
-          </button>
-          <button
-            onClick={() => setSheetOpen(true)}
-            className="col-span-2 h-11 flex items-center justify-center gap-2 px-3 sm:px-4 bg-primary text-primary-foreground rounded-lg text-xs sm:text-sm font-medium hover:opacity-90 transition-default sm:col-span-1"
-          >
-            + Nova Transação
-          </button>
+          {activeCategories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategoryId(activeCategoryId === cat.id ? "all" : cat.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                activeCategoryId === cat.id
+                  ? "text-white"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+              style={activeCategoryId === cat.id ? { backgroundColor: cat.color } : {}}
+            >
+              {cat.name}
+            </button>
+          ))}
         </div>
       </div>
-      
-      {onlyCsvImported && (
-        <div className="mb-6 flex justify-end">
-          <button
-            onClick={handleClearImportedCsv}
-            disabled={clearingCsv}
-            className="h-10 px-4 bg-destructive/10 text-destructive border border-destructive/20 rounded-lg text-sm font-semibold hover:bg-destructive/20 transition-default disabled:opacity-50 flex items-center gap-2"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-            {clearingCsv ? "Apagando..." : "Apagar Todas Importadas (CSV)"}
-          </button>
-        </div>
-      )}
-      {notice && <p className="text-xs text-success mb-3">{notice}</p>}
-      {error && !detailsOpen && <p className="text-xs text-destructive mb-3">{error}</p>}
-      <div className="glass-card p-5">
-        <TransactionTable
-          onViewDetails={openDetails}
-          onlyCsvImported={onlyCsvImported}
-          categoryFilter={categoryFilter}
-          transactionsData={transactionList}
-        />
-      </div>
-      <AddTransactionSheet open={sheetOpen} onClose={() => setSheetOpen(false)} onTransactionAdded={handleTransactionAdded} />
-      <RecurringManageSheet open={recurringOpen} onClose={() => setRecurringOpen(false)} />
 
-      {detailsOpen && selectedTransaction && (
-        <>
-          <div className="fixed inset-0 bg-foreground/30 z-50" onClick={closeDetails} />
-          <div className="fixed z-50 bottom-0 left-0 right-0 bg-card rounded-t-2xl p-5 lg:bottom-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl lg:max-w-xl lg:w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-foreground">Detalhes da Transação</h2>
-              <button onClick={closeDetails} className="text-xs text-muted-foreground hover:text-foreground">Fechar</button>
-            </div>
-
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setType("expense")}
-                  className={`h-9 rounded-lg text-sm font-medium transition-default ${type === "expense" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}
-                >
-                  Despesa
-                </button>
-                <button
-                  onClick={() => setType("income")}
-                  className={`h-9 rounded-lg text-sm font-medium transition-default ${type === "income" ? "bg-success-light text-success" : "bg-muted text-muted-foreground"}`}
-                >
-                  Receita
-                </button>
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Descrição</label>
-                <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full h-10 px-3 bg-muted rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Valor</label>
-                <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" className="w-full h-10 px-3 bg-muted rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block">Categoria</label>
-                <CategoryPicker value={category} onChange={setCategory} type={type} />
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Método</label>
-                <input value={method} onChange={(e) => setMethod(e.target.value)} className="w-full h-10 px-3 bg-muted rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Data</label>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full h-10 px-3 bg-muted rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Tag</label>
-                <button
-                  type="button"
-                  onClick={() => setIsFixed((prev) => !prev)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-default ${isFixed ? "bg-primary text-primary-foreground" : "bg-tag text-tag-foreground hover:bg-hover"}`}
-                >
-                  Custo Fixo
-                </button>
-              </div>
-
-              {error && <p className="text-xs text-destructive">{error}</p>}
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  onClick={handleDeleteTransaction}
-                  disabled={deleting || saving}
-                  className="px-4 h-10 rounded-lg bg-destructive/10 text-destructive text-sm font-medium hover:bg-destructive/20 transition-default disabled:opacity-50"
-                >
-                  {deleting ? "Apagando..." : "Apagar"}
-                </button>
-                <button
-                  onClick={handleSaveChanges}
-                  disabled={saving || deleting}
-                  className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-default disabled:opacity-50"
-                >
-                  {saving ? "Salvando..." : "Salvar alterações"}
-                </button>
-              </div>
-            </div>
+      {/* ── Transaction list ── */}
+      <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+        {loading ? (
+          <div className="p-4 space-y-3">
+            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-14" />)}
           </div>
-        </>
-      )}
+        ) : filtered.length === 0 ? (
+          <div className="py-16 flex flex-col items-center gap-2 text-muted-foreground">
+            <p className="text-sm">Nenhuma transação encontrada</p>
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="text-xs text-blue-600 underline"
+              >
+                Limpar busca
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {filtered.map((tx) => (
+              <div
+                key={tx.id}
+                className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/30 transition-colors group"
+              >
+                {/* Category icon */}
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                  style={{ backgroundColor: tx.category.color }}
+                >
+                  {tx.category.name[0]}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{tx.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    <span style={{ color: tx.category.color }}>{tx.category.name}</span>
+                    {" · "}{formatDate(tx.date)}
+                  </p>
+                </div>
+
+                {/* Amount */}
+                <span
+                  className={`text-sm font-semibold flex-shrink-0 ${
+                    tx.category.isIncome ? "text-emerald-600" : "text-foreground"
+                  }`}
+                >
+                  {tx.category.isIncome ? "+" : "–"}{formatCurrencyBRL(tx.amount)}
+                </span>
+
+                {/* Delete button — appears on hover */}
+                <button
+                  onClick={() => handleDelete(tx.id)}
+                  disabled={deleting === tx.id}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                >
+                  {deleting === tx.id ? (
+                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <AddTransactionModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSaved={handleSaved}
+      />
     </AppLayout>
   );
-};
-
-export default Transactions;
+}
