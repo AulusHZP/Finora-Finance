@@ -1,6 +1,13 @@
 -- Migration: Clean schema rebuild for MVP
 -- Drops old tables and creates new clean schema matching current schema.prisma
 
+DROP TABLE IF EXISTS "GoalContribution" CASCADE;
+DROP TABLE IF EXISTS "Goal" CASCADE;
+DROP TABLE IF EXISTS "CategoryBudget" CASCADE;
+DROP TABLE IF EXISTS "MonthlyBudget" CASCADE;
+DROP TABLE IF EXISTS "Transaction" CASCADE;
+DROP TABLE IF EXISTS "Category" CASCADE;
+DROP TABLE IF EXISTS "User" CASCADE;
 -- ── Create User ───────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "User" (
     "id" TEXT NOT NULL,
