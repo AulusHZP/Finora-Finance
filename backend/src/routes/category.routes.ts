@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { DEV_USER_ID } from "../config/constants";
+import { requireUserId } from "../utils/request";
 import {
   getCategoriesByUserId,
   createCategory,
@@ -10,8 +10,8 @@ import {
 export const categoryRoutes = Router();
 
 /** GET /categories */
-categoryRoutes.get("/", async (_req: Request, res: Response) => {
-  const categories = await getCategoriesByUserId(DEV_USER_ID);
+categoryRoutes.get("/", async (req: Request, res: Response) => {
+  const categories = await getCategoriesByUserId(requireUserId(req));
   return res.json(categories);
 });
 
@@ -23,7 +23,7 @@ categoryRoutes.post("/", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Campos obrigatórios: name, icon, color" });
   }
 
-  const cat = await createCategory({ userId: DEV_USER_ID, name, icon, color });
+  const cat = await createCategory({ userId: requireUserId(req), name, icon, color });
   return res.status(201).json(cat);
 });
 
@@ -31,7 +31,7 @@ categoryRoutes.post("/", async (req: Request, res: Response) => {
 categoryRoutes.patch("/:id", async (req: Request, res: Response) => {
   const { name, icon, color } = req.body;
 
-  const cat = await updateCategory(req.params.id as string, DEV_USER_ID, {
+  const cat = await updateCategory(req.params.id as string, requireUserId(req), {
     ...(name ? { name } : {}),
     ...(icon ? { icon } : {}),
     ...(color ? { color } : {}),
@@ -41,6 +41,6 @@ categoryRoutes.patch("/:id", async (req: Request, res: Response) => {
 
 /** DELETE /categories/:id */
 categoryRoutes.delete("/:id", async (req: Request, res: Response) => {
-  const result = await deleteCategory(req.params.id as string, DEV_USER_ID);
+  const result = await deleteCategory(req.params.id as string, requireUserId(req));
   return res.json(result);
 });

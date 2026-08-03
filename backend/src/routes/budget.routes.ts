@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { DEV_USER_ID } from "../config/constants";
+import { requireUserId } from "../utils/request";
 import { getLimitsData, updateMonthlyBudget, upsertCategoryBudget } from "../services/budget.service";
 
 export const budgetRoutes = Router();
@@ -14,7 +14,7 @@ budgetRoutes.get("/", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Parâmetros year/month inválidos" });
   }
 
-  const data = await getLimitsData(DEV_USER_ID, year, month);
+  const data = await getLimitsData(requireUserId(req), year, month);
   return res.json(data);
 });
 
@@ -25,7 +25,7 @@ budgetRoutes.patch("/", async (req: Request, res: Response) => {
   const month = req.query.month ? parseInt(req.query.month as string, 10) : now.getMonth() + 1;
   const { totalLimit, alertThreshold } = req.body;
 
-  const updated = await updateMonthlyBudget(DEV_USER_ID, year, month, {
+  const updated = await updateMonthlyBudget(requireUserId(req), year, month, {
     totalLimit: totalLimit !== undefined ? (totalLimit === null ? null : Number(totalLimit)) : undefined,
     alertThreshold: alertThreshold !== undefined ? Number(alertThreshold) : undefined,
   });
@@ -40,7 +40,7 @@ budgetRoutes.put("/categories/:categoryId", async (req: Request, res: Response) 
   const { limitAmount } = req.body;
 
   const cb = await upsertCategoryBudget(
-    DEV_USER_ID,
+    requireUserId(req),
     year,
     month,
     req.params.categoryId as string,

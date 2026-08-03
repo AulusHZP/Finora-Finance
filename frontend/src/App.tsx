@@ -45,6 +45,8 @@ const Auth = lazy(() => import("./pages/Auth.tsx"));
 const Index = lazy(() => import("./pages/Index.tsx"));
 const Transactions = lazy(() => import("./pages/Transactions.tsx"));
 const Goals = lazy(() => import("./pages/Goals.tsx"));
+const Limits = lazy(() => import("./pages/Limits.tsx"));
+const Categories = lazy(() => import("./pages/Categories.tsx"));
 const ImportCSV = lazy(() => import("./pages/ImportCSV.tsx"));
 const SettingsPage = lazy(() => import("./pages/Settings.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
@@ -89,6 +91,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Goals />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/limits"
+              element={
+                <ProtectedRoute>
+                  <Limits />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/categories"
+              element={
+                <ProtectedRoute>
+                  <Categories />
                 </ProtectedRoute>
               }
             />

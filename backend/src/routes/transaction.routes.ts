@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { DEV_USER_ID } from "../config/constants";
+import { requireUserId } from "../utils/request";
 import {
   getTransactionsByUserId,
   createTransaction,
@@ -15,7 +15,7 @@ transactionRoutes.get("/", async (req: Request, res: Response) => {
   const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
   const categoryId = req.query.categoryId as string | undefined;
 
-  const transactions = await getTransactionsByUserId(DEV_USER_ID, { year, month, categoryId });
+  const transactions = await getTransactionsByUserId(requireUserId(req), { year, month, categoryId });
   return res.json(transactions);
 });
 
@@ -27,7 +27,7 @@ transactionRoutes.post("/", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Campos obrigatórios: categoryId, description, amount, date" });
   }
 
-  const tx = await createTransaction(DEV_USER_ID, { categoryId, description, amount: Number(amount), date });
+  const tx = await createTransaction(requireUserId(req), { categoryId, description, amount: Number(amount), date });
   return res.status(201).json(tx);
 });
 
@@ -35,7 +35,7 @@ transactionRoutes.post("/", async (req: Request, res: Response) => {
 transactionRoutes.patch("/:id", async (req: Request, res: Response) => {
   const { categoryId, description, amount, date } = req.body;
 
-  const tx = await updateTransaction(req.params.id as string, DEV_USER_ID, {
+  const tx = await updateTransaction(req.params.id as string, requireUserId(req), {
     ...(categoryId ? { categoryId } : {}),
     ...(description ? { description } : {}),
     ...(amount !== undefined ? { amount: Number(amount) } : {}),
@@ -46,6 +46,6 @@ transactionRoutes.patch("/:id", async (req: Request, res: Response) => {
 
 /** DELETE /transactions/:id */
 transactionRoutes.delete("/:id", async (req: Request, res: Response) => {
-  await deleteTransaction(req.params.id as string, DEV_USER_ID);
+  await deleteTransaction(req.params.id as string, requireUserId(req));
   return res.json({ success: true });
 });

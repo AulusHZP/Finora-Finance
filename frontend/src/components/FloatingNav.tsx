@@ -9,6 +9,8 @@ import {
   Menu,
   X,
   LogOut,
+  ShieldCheck,
+  Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStoredUser, logoutRequest, clearAuthSession } from "@/lib/auth";
@@ -19,7 +21,8 @@ const NAV_ITEMS = [
   { to: "/", icon: Home, label: "Início", end: true },
   { to: "/transactions", icon: ArrowRightLeft, label: "Transações", end: false },
   { to: "/goals", icon: Target, label: "Objetivos", end: false },
-  { to: "/import", icon: Upload, label: "Importar CSV", end: false },
+  { to: "/limits", icon: ShieldCheck, label: "Limites", end: false },
+  { to: "/categories", icon: Tag, label: "Categorias", end: false },
 ] as const;
 
 // ─── Hook: resolve which NAV_ITEMS index is active ───────────────────────────

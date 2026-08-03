@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { DEV_USER_ID } from "../config/constants";
+import { requireUserId } from "../utils/request";
 import {
   getGoalsByUserId,
   createGoal,
@@ -12,8 +12,8 @@ import {
 const goalRoutes = Router();
 
 /** GET /goals */
-goalRoutes.get("/", async (_req: Request, res: Response) => {
-  const goals = await getGoalsByUserId(DEV_USER_ID);
+goalRoutes.get("/", async (req: Request, res: Response) => {
+  const goals = await getGoalsByUserId(requireUserId(req));
   return res.json(goals);
 });
 
@@ -25,7 +25,7 @@ goalRoutes.post("/", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Campos obrigatórios: name, icon, targetAmount" });
   }
 
-  const goal = await createGoal(DEV_USER_ID, {
+  const goal = await createGoal(requireUserId(req), {
     name,
     icon,
     targetAmount: Number(targetAmount),
@@ -38,7 +38,7 @@ goalRoutes.post("/", async (req: Request, res: Response) => {
 goalRoutes.patch("/:id", async (req: Request, res: Response) => {
   const { name, icon, targetAmount, deadline } = req.body;
 
-  const goal = await updateGoal(req.params.id as string, DEV_USER_ID, {
+  const goal = await updateGoal(req.params.id as string, requireUserId(req), {
     ...(name ? { name } : {}),
     ...(icon ? { icon } : {}),
     ...(targetAmount !== undefined ? { targetAmount: Number(targetAmount) } : {}),
@@ -49,7 +49,7 @@ goalRoutes.patch("/:id", async (req: Request, res: Response) => {
 
 /** DELETE /goals/:id */
 goalRoutes.delete("/:id", async (req: Request, res: Response) => {
-  await deleteGoal(req.params.id as string, DEV_USER_ID);
+  await deleteGoal(req.params.id as string, requireUserId(req));
   return res.json({ success: true });
 });
 
@@ -63,7 +63,7 @@ goalRoutes.post("/:id/contributions", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Campos obrigatórios: amount, date" });
   }
 
-  const contribution = await addContribution(req.params.id as string, DEV_USER_ID, {
+  const contribution = await addContribution(req.params.id as string, requireUserId(req), {
     amount: Number(amount),
     date,
     note,
@@ -73,7 +73,7 @@ goalRoutes.post("/:id/contributions", async (req: Request, res: Response) => {
 
 /** DELETE /goals/contributions/:contributionId */
 goalRoutes.delete("/contributions/:contributionId", async (req: Request, res: Response) => {
-  await deleteContribution(req.params.contributionId as string, DEV_USER_ID);
+  await deleteContribution(req.params.contributionId as string, requireUserId(req));
   return res.json({ success: true });
 });
 

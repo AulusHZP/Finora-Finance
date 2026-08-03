@@ -1,9 +1,11 @@
 import { Router } from "express";
+import { authRoutes } from "./auth.routes";
 import { dashboardRoutes } from "./dashboard.routes";
 import { transactionRoutes } from "./transaction.routes";
 import { budgetRoutes } from "./budget.routes";
 import goalRoutes from "./goal.routes";
 import { categoryRoutes } from "./category.routes";
+import { authMiddleware } from "../middlewares/auth.middleware";
 
 const router = Router();
 
@@ -14,10 +16,11 @@ router.get("/health", (_req, res) => {
   });
 });
 
-router.use("/dashboard", dashboardRoutes);
-router.use("/transactions", transactionRoutes);
-router.use("/budgets", budgetRoutes);
-router.use("/goals", goalRoutes);
-router.use("/categories", categoryRoutes);
+router.use("/auth", authRoutes);
+router.use("/dashboard", authMiddleware, dashboardRoutes);
+router.use("/transactions", authMiddleware, transactionRoutes);
+router.use("/budgets", authMiddleware, budgetRoutes);
+router.use("/goals", authMiddleware, goalRoutes);
+router.use("/categories", authMiddleware, categoryRoutes);
 
 export { router };

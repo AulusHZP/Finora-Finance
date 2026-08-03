@@ -28,11 +28,10 @@ const PUBLIC_USER_SELECT = {
   name: true,
   email: true,
   creditCardClosingDay: true,
-  createdAt: true,
-  updatedAt: true
+  createdAt: true
 } as const;
 
-const buildAuthSession = async (user: { id: string; name: string; email: string; creditCardClosingDay: number | null; createdAt: Date; updatedAt: Date }) => {
+const buildAuthSession = async (user: { id: string; name: string; email: string; creditCardClosingDay: number | null; createdAt: Date }) => {
   const token = signAuthToken({
     sub: user.id,
     email: user.email
@@ -46,8 +45,7 @@ const buildAuthSession = async (user: { id: string; name: string; email: string;
       name: user.name,
       email: user.email,
       creditCardClosingDay: user.creditCardClosingDay,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt
+      createdAt: user.createdAt
     },
     token,
     refreshToken
@@ -157,7 +155,7 @@ export const getBalanceOffset = async (userId: string): Promise<number> => {
     throw new HttpError(404, "User not found");
   }
 
-  return user.balanceOffset;
+  return user.balanceOffset.toNumber();
 };
 
 export const setBalanceOffset = async (userId: string, offset: number): Promise<number> => {
@@ -167,5 +165,5 @@ export const setBalanceOffset = async (userId: string, offset: number): Promise<
     select: { balanceOffset: true }
   });
 
-  return user.balanceOffset;
+  return user.balanceOffset.toNumber();
 };

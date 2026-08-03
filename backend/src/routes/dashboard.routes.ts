@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { DEV_USER_ID } from "../config/constants";
+import { requireUserId } from "../utils/request";
 import { getDashboardData } from "../services/dashboard.service";
 
 export const dashboardRoutes = Router();
@@ -17,6 +17,6 @@ dashboardRoutes.get("/", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Parâmetros year/month inválidos" });
   }
 
-  const data = await getDashboardData(DEV_USER_ID, year, month);
+  const data = await getDashboardData(requireUserId(req), year, month);
   return res.json(data);
 });
