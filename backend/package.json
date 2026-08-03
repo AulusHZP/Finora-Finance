@@ -7,7 +7,7 @@
     "test": "vitest run",
     "dev": "tsx watch src/server.ts",
     "build": "prisma generate && tsc",
-    "start": "prisma migrate resolve --rolled-back 20260801000000_clean_schema_rebuild || echo 'Already resolved' && prisma migrate deploy && node dist/server.js",
+    "start": "prisma migrate resolve --rolled-back 20260801000000_clean_schema_rebuild || echo 'Already resolved' && prisma migrate resolve --rolled-back 20260803000000_restore_auth || echo 'Already resolved' && prisma migrate deploy && node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",

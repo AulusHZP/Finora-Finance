@@ -1,10 +1,10 @@
 -- AlterTable
-ALTER TABLE "User" ADD COLUMN "balanceOffset" DECIMAL(12,2) NOT NULL DEFAULT 0;
-ALTER TABLE "User" ADD COLUMN "creditCardClosingDay" INTEGER;
-ALTER TABLE "User" ADD COLUMN "password" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "balanceOffset" DECIMAL(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "creditCardClosingDay" INTEGER;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "password" TEXT NOT NULL DEFAULT '';
 
 -- CreateTable
-CREATE TABLE "RefreshToken" (
+CREATE TABLE IF NOT EXISTS "RefreshToken" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "tokenHash" TEXT NOT NULL,
@@ -16,10 +16,11 @@ CREATE TABLE "RefreshToken" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "RefreshToken_tokenHash_key" ON "RefreshToken"("tokenHash");
+CREATE UNIQUE INDEX IF NOT EXISTS "RefreshToken_tokenHash_key" ON "RefreshToken"("tokenHash");
 
 -- CreateIndex
-CREATE INDEX "RefreshToken_userId_idx" ON "RefreshToken"("userId");
+CREATE INDEX IF NOT EXISTS "RefreshToken_userId_idx" ON "RefreshToken"("userId");
 
 -- AddForeignKey
+ALTER TABLE "RefreshToken" DROP CONSTRAINT IF EXISTS "RefreshToken_userId_fkey";
 ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
