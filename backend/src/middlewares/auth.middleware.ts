@@ -1,8 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 import { fail } from "../utils/http";
 import { verifyAuthToken } from "../utils/jwt";
+import { prisma } from "../config/prisma";
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -13,6 +14,12 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
 
   try {
     const payload = verifyAuthToken(token);
+    
+    // Verify user still exists in the database
+    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user) {
+      return res.status(401).json(fail("User no longer exists"));
+    }
 
     req.user = {
       id: payload.sub,
