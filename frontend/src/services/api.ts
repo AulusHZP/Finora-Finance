@@ -13,15 +13,34 @@ import { API_BASE_URL } from "@/config/api";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+export function clearApiCache() {}
+
+export const authorizedJson = request;
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = localStorage.getItem("finora_token");
+  const headers = new Headers(options?.headers || {});
+  
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers,
   });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `HTTP ${res.status}`);
+    if (res.status === 401 && path !== '/auth/login') {
+      // Clear invalid token
+      localStorage.removeItem("finora_token");
+      localStorage.removeItem("finora_user");
+    }
+    throw new Error(body.error || body.message || `HTTP ${res.status}`);
   }
 
   return res.json() as Promise<T>;
