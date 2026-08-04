@@ -7,7 +7,7 @@
     "test": "vitest run",
     "dev": "tsx watch src/server.ts",
     "build": "prisma generate && tsc",
-    "start": "node resolve.js && prisma migrate deploy && node dist/server.js",
+    "start": "prisma migrate deploy && node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
