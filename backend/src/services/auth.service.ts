@@ -4,6 +4,7 @@ import { HttpError } from "../utils/http-error";
 import { env } from "../config/env";
 import { signAuthToken } from "../utils/jwt";
 import { issueRefreshToken } from "./refresh-token.service";
+import { SYSTEM_CATEGORIES } from "../config/system-categories";
 
 type RegisterInput = {
   name: string;
@@ -69,7 +70,10 @@ export const registerUser = async ({ name, email, password }: RegisterInput) => 
     data: {
       name,
       email: normalizedEmail,
-      password: hashedPassword
+      password: hashedPassword,
+      categories: {
+        create: SYSTEM_CATEGORIES.map((category) => ({ ...category, isSystem: true })),
+      },
     }
   });
 

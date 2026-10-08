@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getTransactionsByUserId, createTransaction, getSpentByCategoryForMonth } from "./transaction.service";
+import { getTransactionsByUserId, createTransaction, updateTransaction, getSpentByCategoryForMonth } from "./transaction.service";
 import { prisma } from "../config/prisma";
 import { HttpError } from "../utils/http-error";
 
@@ -8,6 +8,8 @@ vi.mock("../config/prisma", () => ({
     transaction: {
       findMany: vi.fn(),
       create: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
     },
     category: {
       findFirst: vi.fn(),
@@ -95,6 +97,36 @@ describe("Transaction Service", () => {
         include: { category: expect.any(Object) },
       });
       expect(result).toEqual({ id: "tx1" });
+    });
+  });
+
+  describe("updateTransaction", () => {
+    it("updates an existing transaction after validating ownership of the new category", async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({ id: "tx1", categoryId: "c1" } as any);
+      vi.mocked(prisma.category.findFirst).mockResolvedValue({ id: "c2" } as any);
+      const changes = { categoryId: "c2", description: "Compra corrigida", amount: 1350.9, date: "2026-09-30" };
+      vi.mocked(prisma.transaction.update).mockResolvedValue({ id: "tx1", ...changes } as any);
+
+      const result = await updateTransaction("tx1", "u1", changes);
+
+      expect(prisma.transaction.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "tx1", userId: "u1" } }));
+      expect(prisma.category.findFirst).toHaveBeenCalledWith({ where: { id: "c2", userId: "u1" } });
+      expect(prisma.transaction.update).toHaveBeenCalledWith({ where: { id: "tx1" }, data: changes, include: { category: expect.any(Object) } });
+      expect(result).toEqual({ id: "tx1", ...changes });
+      expect(prisma.transaction.create).not.toHaveBeenCalled();
+    });
+
+    it("does not update transactions belonging to another user", async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null);
+      await expect(updateTransaction("tx1", "u2", { amount: 20 })).rejects.toThrow("Transação não encontrada");
+      expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it("does not reassign a transaction to another user's category", async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({ id: "tx1", categoryId: "c1" } as any);
+      vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
+      await expect(updateTransaction("tx1", "u1", { categoryId: "foreign" })).rejects.toThrow("Categoria não encontrada");
+      expect(prisma.transaction.update).not.toHaveBeenCalled();
     });
   });
 

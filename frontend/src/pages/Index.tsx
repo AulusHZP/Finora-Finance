@@ -3,9 +3,6 @@ import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown, Wallet, AlertTriangle, ChevronRight, Plus } from "lucide-react";
 import {
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
   Tooltip,
   LineChart,
   Line,
@@ -15,6 +12,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { AppLayout } from "@/components/AppLayout";
+import { CategorySpendingChart } from "@/components/CategorySpendingChart";
 import { ProgressBar } from "@/components/ProgressBar";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { AddTransactionModal } from "@/components/AddTransactionModal";
@@ -97,20 +95,6 @@ function AlertCategoryCard({ cat, alertThreshold }: { cat: CategoryBudgetSummary
     </div>
   );
 }
-
-// ─── Custom tooltip for charts ────────────────────────────────────────────────
-
-const CurrencyTooltip = ({ active, payload }: { active?: boolean; payload?: { name: string; value: number }[] }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-sm">
-      <p className="font-medium text-foreground">{payload[0].name}</p>
-      <p className="text-muted-foreground">{formatCurrencyBRL(payload[0].value)}</p>
-    </div>
-  );
-};
-
-// ─── Loading skeleton ─────────────────────────────────────────────────────────
 
 const Skeleton = ({ className = "" }: { className?: string }) => (
   <div className={`animate-pulse bg-muted rounded-xl ${className}`} />
@@ -270,7 +254,7 @@ export default function Dashboard() {
       {/* ── Charts row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Donut chart */}
-        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border">
+        <div className="min-w-0 bg-card rounded-2xl p-4 sm:p-5 shadow-sm border border-border">
           <p className="text-sm font-semibold text-foreground mb-1">Gastos por categoria</p>
           <p className="text-xs text-muted-foreground mb-4">Total no mês</p>
 
@@ -281,48 +265,12 @@ export default function Dashboard() {
               Nenhum gasto registrado
             </div>
           ) : (
-            <div className="flex gap-6 items-center">
-              <ResponsiveContainer width={160} height={160}>
-                <PieChart>
-                  <Pie
-                    data={data.donutData}
-                    dataKey="amount"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={45}
-                    outerRadius={75}
-                    paddingAngle={2}
-                  >
-                    {data.donutData.map((entry) => (
-                      <Cell key={entry.categoryId} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CurrencyTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex flex-col gap-2 flex-1 min-w-0">
-                {data.donutData.slice(0, 5).map((entry) => (
-                  <div key={entry.categoryId} className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: entry.color }}
-                      />
-                      <span className="text-xs text-muted-foreground truncate">{entry.name}</span>
-                    </div>
-                    <span className="text-xs font-medium text-foreground flex-shrink-0">
-                      {formatCurrencyBRL(entry.amount)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <CategorySpendingChart key={`${year}-${month}`} data={data.donutData} />
           )}
         </div>
 
         {/* Line chart */}
-        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border">
+        <div className="min-w-0 bg-card rounded-2xl p-4 sm:p-5 shadow-sm border border-border">
           <p className="text-sm font-semibold text-foreground mb-1">Evolução dos gastos</p>
           <p className="text-xs text-muted-foreground mb-4">Acumulado no mês, dia a dia</p>
 
@@ -333,33 +281,43 @@ export default function Dashboard() {
               Nenhum gasto registrado
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={data.lineData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <ResponsiveContainer className="financial-chart" width="100%" height={260} minWidth={0}>
+              <LineChart data={data.lineData} margin={{ top: 12, right: 12, left: 0, bottom: 8 }}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 11, fill: "#94a3b8" }}
+                  ticks={[1, 7, 14, 21, new Date(year, month, 0).getDate()]}
+                  minTickGap={20}
+                  tickMargin={10}
+                  tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "#94a3b8" }}
+                  width={66}
+                  tickCount={5}
+                  tickMargin={8}
+                  tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                  tickFormatter={(v: number) => `R$ ${new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 }).format(v)}`}
                 />
                 <Tooltip
                   formatter={(v: number) => [formatCurrencyBRL(v), "Acumulado"]}
                   labelFormatter={(l) => `Dia ${l}`}
                   contentStyle={{
-                    background: "white",
-                    border: "1px solid #e2e8f0",
+                    background: "hsl(var(--card))",
+                    color: "hsl(var(--foreground))",
+                    border: "1px solid hsl(var(--border))",
                     borderRadius: "12px",
-                    fontSize: "12px",
+                    fontSize: "13px",
+                    maxWidth: "220px",
                   }}
+                  isAnimationActive={false}
                 />
                 <Line
                   type="monotone"
+                  isAnimationActive={false}
                   dataKey="cumulative"
                   stroke="#10b981"
                   strokeWidth={2.5}

@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { transactionAPI, categoryAPI, type Category } from "@/services/api";
-import { formatCurrencyBRL, parseCurrencyInputBRL } from "@/lib/currency";
+import { transactionAPI, categoryAPI, type Category, type Transaction } from "@/services/api";
+import { parseCurrencyInputBRL } from "@/lib/currency";
 import { todayISO } from "@/hooks/usePeriod";
 
 interface AddTransactionModalProps {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
+  transaction?: Transaction | null;
 }
 
-export function AddTransactionModal({ open, onClose, onSaved }: AddTransactionModalProps) {
+export function AddTransactionModal({ open, onClose, onSaved, transaction }: AddTransactionModalProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isIncome, setIsIncome] = useState(false);
   const [description, setDescription] = useState("");
@@ -21,34 +22,39 @@ export function AddTransactionModal({ open, onClose, onSaved }: AddTransactionMo
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
     if (open) {
-      categoryAPI.list().then(setCategories).catch(() => {});
-      // Reset form on open
-      setIsIncome(false);
-      setDescription("");
-      setAmountStr("");
-      setDate(todayISO());
-      setCategoryId("");
+      setCategories([]);
+      categoryAPI.list().then((data) => {
+        if (active) {
+          setCategories(data);
+          setCategoryId(transaction?.categoryId ?? data.find((c) => !c.isIncome)?.id ?? "");
+        }
+      }).catch(() => {
+        if (active) setError("Erro ao carregar categorias. Feche e tente novamente.");
+      });
+      setIsIncome(transaction?.category.isIncome ?? false);
+      setDescription(transaction?.description ?? "");
+      setAmountStr(transaction ? Number(transaction.amount).toFixed(2).replace(".", ",") : "");
+      setDate(transaction?.date ?? todayISO());
+      setCategoryId(transaction?.categoryId ?? "");
       setError(null);
     }
-  }, [open]);
+    return () => { active = false; };
+  }, [open, transaction]);
 
-  // Auto-select "Receitas" when toggling to income
-  useEffect(() => {
-    if (isIncome) {
-      const receitas = categories.find((c) => c.isIncome);
-      if (receitas) setCategoryId(receitas.id);
-    } else {
-      const first = categories.find((c) => !c.isIncome);
-      if (first) setCategoryId(first.id);
-    }
-  }, [isIncome, categories]);
+  const selectType = (income: boolean) => {
+    if (income === isIncome) return;
+    setIsIncome(income);
+    setCategoryId(categories.find((c) => c.isIncome === income)?.id ?? "");
+  };
 
   const expenseCategories = categories.filter((c) => !c.isIncome);
   const incomeCategories = categories.filter((c) => c.isIncome);
   const displayCategories = isIncome ? incomeCategories : expenseCategories;
 
   const handleSave = async () => {
+    if (saving) return;
     if (!description.trim()) { setError("Informe a descrição"); return; }
     const amount = parseCurrencyInputBRL(amountStr);
     if (!amount || amount <= 0) { setError("Informe um valor válido"); return; }
@@ -58,7 +64,12 @@ export function AddTransactionModal({ open, onClose, onSaved }: AddTransactionMo
     try {
       setSaving(true);
       setError(null);
-      await transactionAPI.create({ categoryId, description: description.trim(), amount, date });
+      const payload = { categoryId, description: description.trim(), amount, date };
+      if (transaction) {
+        await transactionAPI.update(transaction.id, payload);
+      } else {
+        await transactionAPI.create(payload);
+      }
       onSaved();
       onClose();
     } catch (e) {
@@ -75,19 +86,21 @@ export function AddTransactionModal({ open, onClose, onSaved }: AddTransactionMo
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={() => { if (!saving) onClose(); }}
       />
 
       {/* Modal */}
-      <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md p-6 z-10">
+      <div role="dialog" aria-modal="true" aria-labelledby="transaction-modal-title" className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md p-6 z-10">
         {/* Header */}
         <div className="flex items-start justify-between mb-1">
           <div>
-            <h2 className="text-lg font-bold text-foreground">Nova transação</h2>
-            <p className="text-xs text-muted-foreground">Registre um gasto ou uma receita do período.</p>
+            <h2 id="transaction-modal-title" className="text-lg font-bold text-foreground">{transaction ? "Editar transação" : "Nova transação"}</h2>
+            <p className="text-xs text-muted-foreground">{transaction ? "Atualize os dados desta transação." : "Registre um gasto ou uma receita do período."}</p>
           </div>
           <button
             onClick={onClose}
+            disabled={saving}
+            aria-label="Fechar"
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground"
           >
             <X className="w-4 h-4" />
@@ -97,7 +110,8 @@ export function AddTransactionModal({ open, onClose, onSaved }: AddTransactionMo
         {/* Type toggle */}
         <div className="flex rounded-xl bg-muted p-1 mb-5 mt-4">
           <button
-            onClick={() => setIsIncome(false)}
+            onClick={() => selectType(false)}
+            disabled={saving || categories.length === 0}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
               !isIncome ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
             }`}
@@ -105,7 +119,8 @@ export function AddTransactionModal({ open, onClose, onSaved }: AddTransactionMo
             Gasto
           </button>
           <button
-            onClick={() => setIsIncome(true)}
+            onClick={() => selectType(true)}
+            disabled={saving || categories.length === 0}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
               isIncome ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
             }`}
@@ -118,8 +133,9 @@ export function AddTransactionModal({ open, onClose, onSaved }: AddTransactionMo
         <div className="space-y-4">
           {/* Description */}
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5">Descrição</label>
+            <label htmlFor="transaction-description" className="block text-xs font-semibold text-foreground mb-1.5">Descrição</label>
             <input
+              id="transaction-description"
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -131,8 +147,9 @@ export function AddTransactionModal({ open, onClose, onSaved }: AddTransactionMo
           {/* Amount + Date */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">Valor (R$)</label>
+              <label htmlFor="transaction-amount" className="block text-xs font-semibold text-foreground mb-1.5">Valor (R$)</label>
               <input
+                id="transaction-amount"
                 type="text"
                 inputMode="decimal"
                 value={amountStr}
@@ -142,8 +159,9 @@ export function AddTransactionModal({ open, onClose, onSaved }: AddTransactionMo
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">Data</label>
+              <label htmlFor="transaction-date" className="block text-xs font-semibold text-foreground mb-1.5">Data</label>
               <input
+                id="transaction-date"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
@@ -154,9 +172,10 @@ export function AddTransactionModal({ open, onClose, onSaved }: AddTransactionMo
 
           {/* Category */}
           <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5">Categoria</label>
+            <label htmlFor="transaction-category" className="block text-xs font-semibold text-foreground mb-1.5">Categoria</label>
             <div className="relative">
               <select
+                id="transaction-category"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none"
@@ -172,23 +191,24 @@ export function AddTransactionModal({ open, onClose, onSaved }: AddTransactionMo
         </div>
 
         {error && (
-          <p className="mt-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+          <p role="alert" className="mt-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
         )}
 
         {/* Actions */}
         <div className="flex gap-3 mt-6">
           <button
             onClick={onClose}
+            disabled={saving}
             className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || categories.length === 0}
             className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white text-sm font-semibold transition-colors"
           >
-            {saving ? "Salvando..." : "Salvar"}
+            {saving ? "Salvando..." : transaction ? "Salvar alterações" : "Salvar"}
           </button>
         </div>
       </div>

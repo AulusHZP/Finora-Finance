@@ -1,14 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, Search, Trash2 } from "lucide-react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Cell,
-} from "recharts";
+import { Plus, Search, Trash2, Pencil } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { AddTransactionModal } from "@/components/AddTransactionModal";
@@ -28,6 +19,7 @@ export default function Transactions() {
   const [search, setSearch] = useState("");
   const [activeCategoryId, setActiveCategoryId] = useState<string>("all");
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -62,12 +54,6 @@ export default function Transactions() {
       setDeleting(null);
     }
   }, []);
-
-  // ── Filter chips — categories that have transactions this month ──────────────
-  const activeCategories = useMemo(() => {
-    const ids = new Set(transactions.map((t) => t.categoryId));
-    return categories.filter((c) => ids.has(c.id));
-  }, [transactions, categories]);
 
   // ── Filtered transactions ────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -114,7 +100,7 @@ export default function Transactions() {
           <p className="text-sm text-muted-foreground capitalize">{periodLabel}</p>
         </div>
         <button
-          onClick={() => setModalOpen(true)}
+          onClick={() => { setEditingTransaction(null); setModalOpen(true); }}
           className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
@@ -131,45 +117,22 @@ export default function Transactions() {
         <div className="bg-card rounded-2xl p-5 shadow-sm border border-border mb-6">
           <p className="text-sm font-semibold text-foreground mb-1">Onde você mais gasta</p>
           <p className="text-xs text-muted-foreground mb-4">Ranking de categorias no período</p>
-          <ResponsiveContainer width="100%" height={rankingData.length * 36 + 20}>
-            <BarChart
-              data={rankingData}
-              layout="vertical"
-              margin={{ top: 0, right: 10, left: 60, bottom: 0 }}
-            >
-              <XAxis
-                type="number"
-                tick={{ fontSize: 11, fill: "#94a3b8" }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v) =>
-                  v >= 1000 ? `R$ ${(v / 1000).toFixed(1)} mil` : formatCurrencyBRL(v)
-                }
-              />
-              <YAxis
-                type="category"
-                dataKey="name"
-                tick={{ fontSize: 12, fill: "#64748b" }}
-                tickLine={false}
-                axisLine={false}
-                width={58}
-              />
-              <Tooltip
-                formatter={(v: number) => [formatCurrencyBRL(v), "Total"]}
-                contentStyle={{
-                  background: "white",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "12px",
-                  fontSize: "12px",
-                }}
-              />
-              <Bar dataKey="amount" radius={[0, 6, 6, 0]} barSize={18}>
-                {rankingData.map((entry) => (
-                  <Cell key={entry.name} fill={entry.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <ul className="space-y-4" aria-label="Ranking de gastos por categoria">
+            {rankingData.map((entry) => (
+              <li key={entry.name}>
+                <div className="mb-2 flex items-start justify-between gap-3 text-sm">
+                  <span className="min-w-0 break-words font-medium text-foreground">{entry.name}</span>
+                  <span className="shrink-0 font-semibold tabular-nums text-foreground">{formatCurrencyBRL(entry.amount)}</span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ backgroundColor: entry.color, width: `${entry.amount / rankingData[0].amount * 100}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -202,7 +165,7 @@ export default function Transactions() {
           >
             Todas
           </button>
-          {activeCategories.map((cat) => (
+          {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setActiveCategoryId(activeCategoryId === cat.id ? "all" : cat.id)}
@@ -270,11 +233,22 @@ export default function Transactions() {
                   {tx.category.isIncome ? "+" : "–"}{formatCurrencyBRL(tx.amount)}
                 </span>
 
-                {/* Delete button — appears on hover */}
+                <button
+                  onClick={() => { setEditingTransaction(tx); setModalOpen(true); }}
+                  disabled={deleting === tx.id}
+                  aria-label={`Editar ${tx.description}`}
+                  title="Editar transação"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+
                 <button
                   onClick={() => handleDelete(tx.id)}
                   disabled={deleting === tx.id}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                  aria-label={`Excluir ${tx.description}`}
+                  title="Excluir transação"
+                  className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
                 >
                   {deleting === tx.id ? (
                     <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -292,6 +266,7 @@ export default function Transactions() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSaved={handleSaved}
+        transaction={editingTransaction}
       />
     </AppLayout>
   );

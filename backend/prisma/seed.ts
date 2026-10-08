@@ -3,13 +3,14 @@
  *
  * Creates:
  *  - 1 dev user (MVP: single-user, no auth)
- *  - 9 system categories (isSystem=true, not deletable via UI)
+ *  - 10 system categories (isSystem=true, not deletable via UI)
  *    including "Receitas" (isIncome=true)
  *
  * Run: npx prisma db seed
  */
 
 import { PrismaClient } from "@prisma/client";
+import { SYSTEM_CATEGORIES } from "../src/config/system-categories";
 
 const prisma = new PrismaClient();
 
@@ -19,65 +20,6 @@ const DEV_USER = {
   name: "Dev User",
   email: "dev@finora.local",
 };
-
-// ─── System categories ────────────────────────────────────────────────────────
-// icon: Lucide icon name  |  color: hex  |  isIncome: only "Receitas"
-const SYSTEM_CATEGORIES = [
-  {
-    name: "Receitas",
-    icon: "trending-up",
-    color: "#10B981",
-    isIncome: true,
-  },
-  {
-    name: "Alimentação",
-    icon: "utensils",
-    color: "#F59E0B",
-    isIncome: false,
-  },
-  {
-    name: "Transporte",
-    icon: "car",
-    color: "#3B82F6",
-    isIncome: false,
-  },
-  {
-    name: "Moradia",
-    icon: "home",
-    color: "#8B5CF6",
-    isIncome: false,
-  },
-  {
-    name: "Lazer",
-    icon: "gamepad-2",
-    color: "#F97316",
-    isIncome: false,
-  },
-  {
-    name: "Saúde",
-    icon: "heart",
-    color: "#EF4444",
-    isIncome: false,
-  },
-  {
-    name: "Educação",
-    icon: "graduation-cap",
-    color: "#06B6D4",
-    isIncome: false,
-  },
-  {
-    name: "Compras",
-    icon: "shopping-bag",
-    color: "#EC4899",
-    isIncome: false,
-  },
-  {
-    name: "Assinaturas",
-    icon: "refresh-cw",
-    color: "#6B7280",
-    isIncome: false,
-  },
-] as const;
 
 async function main() {
   console.log("🌱 Finora seed starting...\n");

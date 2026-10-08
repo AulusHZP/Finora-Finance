@@ -4,6 +4,16 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
+/* Recharts focuses SVG sectors on tap. Selection is shown by color; the
+   equivalent legend buttons retain a visible keyboard focus ring. */
+.category-donut :focus {
+  outline: none;
+}
+
+.financial-chart .recharts-surface:focus:not(:focus-visible) {
+  outline: none;
+}
+
 @layer base {
   :root {
     --background: 210 20% 98%;
