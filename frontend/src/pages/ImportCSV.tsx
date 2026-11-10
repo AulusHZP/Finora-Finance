@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { Upload, FileText, AlertTriangle, CheckCircle2, X } from "lucide-react";
-import { transactionAPI, type ImportTransactionPayload } from "@/services/api";
+import { Upload, FileText, AlertTriangle, X } from "lucide-react";
 import { parseCurrencyInputBRL, formatCurrencyBRL } from "@/lib/currency";
 
 type MappableField = "date" | "description" | "amount" | "skip";
@@ -83,13 +82,8 @@ const ImportCSV = () => {
   const [signConvention, setSignConvention] = useState<SignConvention>("creditCard");
   const [duplicates, setDuplicates] = useState<number[]>([]);
   const [previewRows, setPreviewRows] = useState<PreviewTransaction[]>([]);
-  const [importPayload, setImportPayload] = useState<ImportTransactionPayload[]>([]);
-  const [importing, setImporting] = useState(false);
-  const [clearingImports, setClearingImports] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [importedCount, setImportedCount] = useState(0);
-  const [step, setStep] = useState<"upload" | "map" | "review" | "done">("upload");
+  const [step, setStep] = useState<"upload" | "map" | "review">("upload");
 
   const parseCSV = useCallback((text: string) => {
     const lines = text
@@ -106,8 +100,6 @@ const ImportCSV = () => {
     setError(null);
     setDuplicates([]);
     setPreviewRows([]);
-    setImportPayload([]);
-    setImportedCount(0);
 
     // Auto-detect mapping
     const autoMap: Record<number, MappableField> = {};
@@ -141,7 +133,6 @@ const ImportCSV = () => {
     const seen = new Set<string>();
     const dupes: number[] = [];
     const preview: PreviewTransaction[] = [];
-    const payload: ImportTransactionPayload[] = [];
 
     const dateCol = getMappedField("date");
     const amtCol = getMappedField("amount");
@@ -185,25 +176,14 @@ const ImportCSV = () => {
         isDuplicate
       });
 
-      if (!isDuplicate) {
-        payload.push({
-          title: description,
-          amount: Math.abs(parsedAmount),
-          type,
-          category: type === "income" ? "Receita" : "Importado",
-          method: "Importação CSV",
-          date: parsedDate
-        });
-      }
     });
 
-    if (payload.length === 0) {
-      setError("Nenhuma transação válida encontrada no CSV para importar.");
+    if (preview.length === 0) {
+      setError("Nenhuma transação válida encontrada no CSV para visualizar.");
       return;
     }
 
     setPreviewRows(preview);
-    setImportPayload(payload);
     setDuplicates(dupes);
     setStep("review");
   };
@@ -225,70 +205,21 @@ const ImportCSV = () => {
     setMapping({});
     setDuplicates([]);
     setPreviewRows([]);
-    setImportPayload([]);
-    setImportedCount(0);
     setError(null);
-    setNotice(null);
-  };
-
-  const handleImport = async () => {
-    try {
-      setImporting(true);
-      setError(null);
-      setNotice(null);
-
-      const result = await transactionAPI.importTransactions(importPayload);
-      setImportedCount(result.imported);
-      setStep("done");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Falha ao importar CSV";
-      setError(message);
-    } finally {
-      setImporting(false);
-    }
-  };
-
-  const handleClearImportedTransactions = async () => {
-    const shouldClear = window.confirm("Deseja apagar todas as transações importadas via CSV?");
-    if (!shouldClear) {
-      return;
-    }
-
-    try {
-      setClearingImports(true);
-      setError(null);
-      setNotice(null);
-      const result = await transactionAPI.clearImportedTransactions();
-      setNotice(`${result.deleted} transações importadas foram apagadas.`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Falha ao limpar transações importadas";
-      setError(message);
-    } finally {
-      setClearingImports(false);
-    }
   };
 
   return (
     <AppLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Importar CSV</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Envie extratos bancários ou exportações de transações</p>
-        <div className="mt-3">
-          <button
-            onClick={handleClearImportedTransactions}
-            disabled={clearingImports}
-            className="px-3 py-2 bg-destructive/10 text-destructive rounded-lg text-xs font-medium hover:bg-destructive/20 transition-default disabled:opacity-50"
-          >
-            {clearingImports ? "Limpando importações..." : "Apagar transações importadas (CSV)"}
-          </button>
-        </div>
-        {notice && <p className="text-xs text-success mt-2">{notice}</p>}
+        <p className="text-sm text-muted-foreground mt-0.5">Visualize extratos bancários ou exportações de transações</p>
+        <p role="status" className="text-sm text-muted-foreground mt-3">A importação e a limpeza de transações via CSV estão indisponíveis. É possível apenas visualizar os dados do arquivo; nenhuma transação será criada ou apagada.</p>
       </div>
 
       {/* Step indicators */}
       <div className="flex items-center gap-2 mb-6">
-        {["Envio", "Mapear Colunas", "Revisar", "Concluído"].map((label, i) => {
-          const stepNames = ["upload", "map", "review", "done"];
+        {["Envio", "Mapear Colunas", "Revisar"].map((label, i) => {
+          const stepNames = ["upload", "map", "review"];
           const isActive = stepNames.indexOf(step) >= i;
           return (
             <div key={label} className="flex items-center gap-2">
@@ -296,7 +227,7 @@ const ImportCSV = () => {
                 {i + 1}
               </div>
               <span className={`text-xs font-medium ${isActive ? "text-foreground" : "text-muted-foreground"} hidden sm:inline`}>{label}</span>
-              {i < 3 && <div className={`w-6 lg:w-12 h-px ${isActive ? "bg-primary" : "bg-border"}`} />}
+              {i < 2 && <div className={`w-6 lg:w-12 h-px ${isActive ? "bg-primary" : "bg-border"}`} />}
             </div>
           );
         })}
@@ -315,7 +246,7 @@ const ImportCSV = () => {
           <input id="csv-input" type="file" accept=".csv" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <FileText className="h-3.5 w-3.5" />
-            <span>Suporta arquivos .csv de qualquer banco</span>
+            <span>Selecione um arquivo .csv para pré-visualização</span>
           </div>
         </div>
       )}
@@ -397,10 +328,10 @@ const ImportCSV = () => {
 
       {step === "review" && (
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-1">Revisar Importação</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-1">Revisar dados do arquivo</h3>
           <p className="text-xs text-muted-foreground mb-4">
-            {importPayload.length} transações para importar
-            {duplicates.length > 0 && <span className="text-destructive"> ({duplicates.length} duplicadas excluídas)</span>}
+            {previewRows.length - duplicates.length} {previewRows.length - duplicates.length === 1 ? "transação válida" : "transações válidas"} no arquivo
+            {duplicates.length > 0 && <span className="text-destructive"> ({duplicates.length} {duplicates.length === 1 ? "duplicada" : "duplicadas"} no arquivo)</span>}
           </p>
 
           {error && (
@@ -440,25 +371,11 @@ const ImportCSV = () => {
             <button onClick={() => setStep("map")} className="px-4 py-2.5 bg-muted text-foreground rounded-lg text-sm font-medium hover:bg-hover transition-default">
               Voltar
             </button>
-            <button onClick={handleImport} disabled={importing || importPayload.length === 0} className="px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-default disabled:opacity-50 disabled:cursor-not-allowed">
-              {importing ? "Importando..." : `Importar ${importPayload.length} Transações`}
-            </button>
+            <button onClick={resetImportState} className="px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-default">Escolher outro arquivo</button>
           </div>
         </div>
       )}
 
-      {step === "done" && (
-        <div className="glass-card p-10 flex flex-col items-center text-center">
-          <CheckCircle2 className="h-12 w-12 text-success mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-1">Importação Concluída</h3>
-          <p className="text-sm text-muted-foreground mb-6">
-            {importedCount} transações importadas com sucesso.
-          </p>
-          <button onClick={resetImportState} className="px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-default">
-            Importar Mais
-          </button>
-        </div>
-      )}
     </AppLayout>
   );
 };
