@@ -12,6 +12,18 @@ Aplicação web para acompanhar receitas e despesas, visualizar gastos por categ
 - Criação de objetivos financeiros e registro de contribuições.
 - Interface responsiva para uso em diferentes tamanhos de tela.
 
+## Telas
+
+As imagens mostram a interface com dados fictícios e respostas de API simuladas.
+
+**Dashboard**
+
+![Dashboard do Finora com resumo financeiro e gráficos por categoria](docs/images/dashboard.png)
+
+**Transações**
+
+![Tela de transações do Finora com ranking de gastos e lista de lançamentos](docs/images/transacoes.png)
+
 ## Tecnologias
 
 | Camada | Tecnologias |
