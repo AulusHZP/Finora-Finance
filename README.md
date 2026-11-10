@@ -7,7 +7,8 @@ Aplicação web para acompanhar receitas e despesas, visualizar gastos por categ
 ## Funcionalidades
 
 - Cadastro e autenticação de usuários.
-- Registro e edição de transações, com categorias e importação e exportação de CSV.
+- Registro e edição de transações com categorias.
+- Pré-visualização local de arquivos CSV; a importação e a limpeza de transações via CSV estão indisponíveis na API atual.
 - Dashboard com gráficos de gastos e acompanhamento de limites mensais.
 - Criação de objetivos financeiros e registro de contribuições.
 - Interface responsiva para uso em diferentes tamanhos de tela.
