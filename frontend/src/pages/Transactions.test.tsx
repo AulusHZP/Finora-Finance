@@ -29,9 +29,9 @@ beforeEach(() => {
 it("shows categories without expenses and refreshes the list and category filters after editing", async () => {
   render(<Transactions />);
   await screen.findByRole("button", { name: "Editar Café" });
-  fireEvent.click(screen.getByRole("button", { name: "Compras", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: /^Compras$/ }));
   expect(screen.getByText("Nenhuma transação encontrada")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Outros", exact: true })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /^Outros$/ })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Todas" }));
   fireEvent.click(screen.getByRole("button", { name: "Editar Café" }));
   await waitFor(() => expect(screen.getByLabelText("Categoria")).toHaveValue("food"));
@@ -44,8 +44,8 @@ it("shows categories without expenses and refreshes the list and category filter
   await screen.findByRole("button", { name: "Editar Café corrigido" });
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(transactionAPI.list).toHaveBeenCalledTimes(2);
-  fireEvent.click(screen.getByRole("button", { name: "Compras", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: /^Compras$/ }));
   expect(screen.getByText("Café corrigido")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Comidas", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: /^Comidas$/ }));
   expect(screen.getByText("Nenhuma transação encontrada")).toBeInTheDocument();
 });

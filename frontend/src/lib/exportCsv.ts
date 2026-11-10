@@ -1,24 +1,24 @@
 import type { Transaction } from "@/services/api";
 
 const escapeCsvCell = (value: string): string =>
-  /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 
 /**
- * Builds a UTF-8 (BOM) CSV of transactions, reimportable by the app's own
- * CSV importer (comma separator, ISO dates, dot decimals).
+ * Builds a UTF-8 (BOM) CSV with comma separators and ISO dates.
+ * Import does not currently preserve category names or multiline fields.
  */
 export const buildTransactionsCsv = (transactions: Transaction[]): string => {
-  const header = ["date", "title", "type", "amount", "category", "method", "isFixed"];
+  // Amounts follow the importer's credit-card convention: expenses are
+  // positive and income is negative. The current API stores both as positive
+  // and uses the category to distinguish them.
+  const header = ["date", "description", "amount", "category"];
 
   const rows = transactions.map((tx) =>
     [
       tx.date.split("T")[0],
-      tx.title,
-      tx.type,
-      String(tx.amount),
-      tx.category,
-      tx.method,
-      tx.isFixed ? "sim" : "nao"
+      tx.description,
+      String(tx.category.isIncome ? -tx.amount : tx.amount),
+      tx.category.name,
     ]
       .map((cell) => escapeCsvCell(cell))
       .join(",")
