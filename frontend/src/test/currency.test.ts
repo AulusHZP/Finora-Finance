@@ -40,7 +40,7 @@ describe("parseCurrencyInputBRL", () => {
 
 describe("formatCurrencyBRL", () => {
   it("formats using the BRL currency style", () => {
-    //   = non-breaking space emitted by Intl
-    expect(formatCurrencyBRL(1234.56).replace(/ /g, " ")).toBe("R$ 1.234,56");
+    // Intl emits a non-breaking space between the currency and amount.
+    expect(formatCurrencyBRL(1234.56).replace(/\u00a0/g, " ")).toBe("R$ 1.234,56");
   });
 });

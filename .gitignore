@@ -24,3 +24,7 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Generated Playwright reports and test output
+frontend/playwright-report/
+frontend/test-results/

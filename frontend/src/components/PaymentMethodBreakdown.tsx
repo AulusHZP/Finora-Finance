@@ -5,7 +5,7 @@ import type { Transaction } from "@/services/api";
 const methodColors = ["bg-blue-500", "bg-emerald-500", "bg-cyan-500", "bg-amber-500", "bg-rose-500", "bg-slate-500"];
 import { CreditCard, Landmark, Smartphone, Banknote, Download, HelpCircle } from "lucide-react";
 
-const methodIcons: Record<string, any> = {
+const methodIcons: Record<string, import("lucide-react").LucideIcon> = {
   "Crédito": CreditCard,
   "Débito": CreditCard,
   "Transferência": Landmark,

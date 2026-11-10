@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { ShoppingBag, Car, Utensils, Briefcase, Zap, Heart, Gamepad2, DollarSign, ArrowUpDown, Search } from "lucide-react";
 import { transactionAPI, Transaction } from "@/services/api";
 
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, import("lucide-react").LucideIcon> = {
   Compras: ShoppingBag,
   Transporte: Car,
   Alimentação: Utensils,

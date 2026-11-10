@@ -182,6 +182,7 @@ export default function Limits() {
       setTotalLimitStr(limitsData.totalLimit !== null ? String(limitsData.totalLimit) : "");
       setSliderValue(limitsData.alertThreshold);
     } catch {
+      // Preserve the current values if loading fails.
     } finally {
       setLoading(false);
     }

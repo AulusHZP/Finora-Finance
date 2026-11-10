@@ -238,7 +238,7 @@ const DonutCenterLabel = ({
 
 // ─── Active shape for donut hover ─────────────────────────────────────────────
 
-const renderActiveShape = (props: any) => {
+const renderActiveShape = (props: { cx: number; cy: number; innerRadius: number; outerRadius: number; startAngle: number; endAngle: number; fill: string }) => {
   const {
     cx, cy, innerRadius, outerRadius,
     startAngle, endAngle, fill,
@@ -283,7 +283,7 @@ function DonutChart({ categoryData }: DonutChartProps) {
     [dataWithColors]
   );
 
-  const onMouseEnter = useCallback((_: any, index: number) => {
+  const onMouseEnter = useCallback((_: unknown, index: number) => {
     setActiveIndex(index);
   }, []);
 
@@ -475,7 +475,7 @@ export function SpendingChart({
     setSelectedDay(null);
   }, [period, activeTab, weekOffset]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { dateStr: string; income: number; expense: number } }> }) => {
     if (active && payload && payload.length) {
       const pData = payload[0].payload;
       return (
@@ -651,7 +651,7 @@ export function SpendingChart({
                   fill="#10b981"
                   isAnimationActive
                   animationDuration={900}
-                  onClick={(d) => setSelectedDay(d as any)}
+                  onClick={(d) => setSelectedDay(d as unknown as NonNullable<typeof selectedDay>)}
                   className="cursor-pointer"
                 />
                 <Bar
@@ -661,7 +661,7 @@ export function SpendingChart({
                   fill="#FF1717"
                   isAnimationActive
                   animationDuration={900}
-                  onClick={(d) => setSelectedDay(d as any)}
+                  onClick={(d) => setSelectedDay(d as unknown as NonNullable<typeof selectedDay>)}
                   className="cursor-pointer"
                 />
               </BarChart>
@@ -687,7 +687,7 @@ export function SpendingChart({
 
               {selectedDay.transactions.length > 0 ? (
                 <div className="space-y-2 sm:space-y-3 max-h-[160px] overflow-y-auto pr-2 scrollbar-thin">
-                  {selectedDay.transactions.map((tx: any, i: number) => {
+                  {selectedDay.transactions.map((tx, i: number) => {
                     const isIncome = normalizeType(tx.type) === "income";
                     return (
                       <div
