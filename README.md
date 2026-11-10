@@ -84,20 +84,21 @@ Os testes cobrem, entre outros pontos, formatação de valores, exportação CSV
 # frontend/
 npm test
 npm run lint
+npm run typecheck
 
 # backend/
 npm test
 ```
 
-O diretório `frontend/e2e/` contém testes Playwright. Para executar a verificação de gráficos com respostas de API simuladas:
+O diretório `frontend/e2e/` contém testes Playwright da interface para gráficos e criação de transações. Eles usam respostas de API simuladas e dados fictícios: não exercitam a API ou um banco de dados reais. Para executá-los:
 
 ```bash
 cd frontend
 npx playwright install chromium
-npx playwright test e2e/charts.spec.ts
+npm run test:e2e
 ```
 
-A configuração do Playwright inicia o Vite na porta 5173 para os testes. O teste de criação de transação em `transaction.spec.ts` depende de autenticação e de uma API com dados adequados; ele pode criar dados no ambiente configurado. As instruções acima não representam uma execução ou resultado de testes.
+A configuração do Playwright inicia o Vite na porta 5173 para os testes, com endereço de API isolado. As instruções acima não representam uma execução ou resultado de testes.
 
 ## Build e publicação
 
