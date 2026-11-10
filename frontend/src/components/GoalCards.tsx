@@ -8,7 +8,7 @@ interface Goal {
   target: number;
 }
 
-export const allGoals: Goal[] = [
+const allGoals: Goal[] = [
   { id: "1", title: "New MacBook", current: 1200, target: 2500 },
   { id: "2", title: "Vacation Fund", current: 3400, target: 5000 },
   { id: "3", title: "Emergency Fund", current: 8200, target: 10000 },
